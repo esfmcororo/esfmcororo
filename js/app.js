@@ -47,6 +47,7 @@ function isUsuario() {
 }
 
 let currentEventId = null;
+let eventoTimer = null;
 
 // ========== NAVEGACIÓN ==========
 
@@ -84,8 +85,15 @@ function showScanner(eventoId, eventoNombre) {
     currentEventId = eventoId;
     document.getElementById('evento-title').textContent = eventoNombre;
     document.getElementById('scanner-section').classList.add('active');
-    startScanner();
-    loadAsistencias(eventoId);
+    
+    // Validar fecha y hora del evento
+    validarEventoActivo(eventoId).then(esValido => {
+        if (esValido) {
+            startScanner();
+            loadAsistencias(eventoId);
+            iniciarMonitoreoEvento(eventoId);
+        }
+    });
 }
 
 function showEstudiantes() {
@@ -105,6 +113,17 @@ function showAgregarEstudiante() {
 
 function hideAllSections() {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    
+    // Detener temporizador si existe
+    if (eventoTimer) {
+        clearInterval(eventoTimer);
+        eventoTimer = null;
+    }
+    
+    // Detener escáner si está activo
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop();
+    }
 }
 
 // ========== EVENTOS ==========
@@ -197,8 +216,8 @@ async function loadEventos() {
     data.forEach(evento => {
         const card = document.createElement('div');
         card.className = 'evento-card';
-        const fechaInicio = new Date(evento.fecha_inicio).toLocaleDateString('es-ES');
-        const fechaFin = new Date(evento.fecha_fin).toLocaleDateString('es-ES');
+        const fechaInicio = new Date(evento.fecha_inicio + 'T00:00:00').toLocaleDateString('es-BO');
+        const fechaFin = new Date(evento.fecha_fin + 'T00:00:00').toLocaleDateString('es-BO');
         const rangoFecha = fechaInicio === fechaFin ? fechaInicio : `${fechaInicio} - ${fechaFin}`;
         card.innerHTML = `
             <div class="evento-info">
@@ -215,6 +234,83 @@ async function loadEventos() {
 }
 
 // ========== ESCÁNER QR ==========
+
+function iniciarMonitoreoEvento(eventoId) {
+    // Verificar cada 60 segundos si el evento sigue activo
+    eventoTimer = setInterval(async () => {
+        const { data: evento } = await supabase
+            .from('eventos')
+            .select('fecha_inicio, fecha_fin, hora_inicio, hora_fin')
+            .eq('id', eventoId)
+            .single();
+        
+        if (!evento) return;
+        
+        const ahora = new Date();
+        const fechaActual = ahora.toISOString().split('T')[0];
+        const horaActual = ahora.getHours().toString().padStart(2, '0') + ':' + ahora.getMinutes().toString().padStart(2, '0');
+        const horaFin = evento.hora_fin.substring(0, 5);
+        
+        // Agregar 10 minutos de tolerancia
+        const [horaFinH, horaFinM] = horaFin.split(':').map(Number);
+        let minutosFinales = horaFinM + 10;
+        let horasFinales = horaFinH;
+        
+        if (minutosFinales >= 60) {
+            horasFinales += 1;
+            minutosFinales -= 60;
+        }
+        
+        const horaFinConTolerancia = horasFinales.toString().padStart(2, '0') + ':' + minutosFinales.toString().padStart(2, '0');
+        
+        // Verificar si ya pasó el tiempo (con tolerancia)
+        if (fechaActual > evento.fecha_fin || (fechaActual === evento.fecha_fin && horaActual > horaFinConTolerancia)) {
+            clearInterval(eventoTimer);
+            alert('⏰ El periodo del evento ha finalizado. Redirigiendo al dashboard...');
+            showDashboard();
+        }
+    }, 60000); // Cada 60 segundos
+}
+
+async function validarEventoActivo(eventoId) {
+    const { data: evento } = await supabase
+        .from('eventos')
+        .select('fecha_inicio, fecha_fin, hora_inicio, hora_fin')
+        .eq('id', eventoId)
+        .single();
+    
+    if (!evento) return false;
+    
+    const ahora = new Date();
+    const fechaActual = ahora.toISOString().split('T')[0];
+    const horaActual = ahora.getHours().toString().padStart(2, '0') + ':' + ahora.getMinutes().toString().padStart(2, '0');
+    
+    console.log('Validación:', {
+        fechaActual,
+        horaActual,
+        evento
+    });
+    
+    // Validar fecha
+    if (fechaActual < evento.fecha_inicio || fechaActual > evento.fecha_fin) {
+        alert(`⚠️ Este evento solo está activo entre ${evento.fecha_inicio} y ${evento.fecha_fin}\nFecha actual: ${fechaActual}`);
+        showDashboard();
+        return false;
+    }
+    
+    // Extraer solo HH:MM de las horas del evento (quitar segundos)
+    const horaInicio = evento.hora_inicio.substring(0, 5);
+    const horaFin = evento.hora_fin.substring(0, 5);
+    
+    // Validar hora
+    if (horaActual < horaInicio || horaActual > horaFin) {
+        alert(`⚠️ Este evento solo registra asistencias entre ${horaInicio} y ${horaFin}\nHora actual: ${horaActual}`);
+        showDashboard();
+        return false;
+    }
+    
+    return true;
+}
 
 function startScanner() {
     html5QrCode = new Html5Qrcode("reader");
@@ -322,9 +418,20 @@ async function onScanSuccess(codigoUnico) {
             return;
         }
 
-        showMessage(`✓ ${estudiante.nombre} ${estudiante.apellido} - Asistencia registrada`, 'success');
+        showMessage(`✓ ${estudiante.nombre} ${estudiante.apellido_paterno} ${estudiante.apellido_materno || ''} - Asistencia registrada`, 'success');
         loadAsistencias(currentEventId);
-        setTimeout(() => { isScanning = false; }, 2000);
+        
+        // Reiniciar escáner después de 2 segundos
+        setTimeout(() => { 
+            isScanning = false;
+            // Si hay cámara activa, continuar escaneando
+            if (html5QrCode && html5QrCode.isScanning) {
+                // Ya está escaneando, solo resetear flag
+            } else {
+                // Reiniciar escáner si se detuvo
+                startScanner();
+            }
+        }, 2000);
 
     } catch (error) {
         console.error('Error general:', error);
@@ -342,7 +449,7 @@ async function loadAsistencias(eventoId) {
         .from('asistencias')
         .select(`
             *,
-            estudiantes (nombre, apellido, codigo_unico, especialidad, anio)
+            estudiantes (nombre, apellido_paterno, apellido_materno, codigo_unico, dni, especialidad, anio)
         `)
         .eq('evento_id', eventoId)
         .order('timestamp', { ascending: false });
@@ -356,13 +463,20 @@ async function loadAsistencias(eventoId) {
     data.forEach(asistencia => {
         const item = document.createElement('div');
         item.className = 'asistencia-item';
-        const time = new Date(asistencia.timestamp).toLocaleTimeString('es-ES');
+        const time = new Date(asistencia.timestamp).toLocaleString('es-BO', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
         const est = asistencia.estudiantes;
         item.innerHTML = `
             <div style="width: 100%;">
-                <strong style="font-size: 16px; color: #333;">${est.nombre} ${est.apellido}</strong><br>
+                <strong style="font-size: 16px; color: #333;">${est.nombre} ${est.apellido_paterno} ${est.apellido_materno || ''}</strong><br>
                 <small style="color: #666; font-size: 13px;">
                     📋 ${est.codigo_unico} | 
+                    🆔 ${est.dni || 'Sin DNI'} | 
                     🎓 ${est.especialidad || 'Sin especialidad'} | 
                     📅 Año ${est.anio || 'N/A'}
                 </small>
@@ -477,8 +591,8 @@ async function loadEstudiantes() {
             contentDiv.innerHTML = estudiantes.map(est => `
                 <div class="estudiante-item">
                     <div>
-                        <strong>${est.nombre} ${est.apellido}</strong><br>
-                        <small>📋 ${est.codigo_unico}</small>
+                        <strong>${est.nombre} ${est.apellido_paterno} ${est.apellido_materno || ''}</strong><br>
+                        <small>📋 ${est.codigo_unico} | 🆔 ${est.dni || 'Sin DNI'} | 📱 ${est.celular || 'Sin celular'}</small>
                     </div>
                 </div>
             `).join('');
@@ -541,19 +655,25 @@ function showAgregarEstudiante() {
 
 async function agregarEstudiante() {
     const codigo = document.getElementById('est-codigo').value;
+    const dni = document.getElementById('est-dni').value;
     const nombre = document.getElementById('est-nombre').value;
-    const apellido = document.getElementById('est-apellido').value;
+    const apellidoPaterno = document.getElementById('est-apellido-paterno').value;
+    const apellidoMaterno = document.getElementById('est-apellido-materno').value;
+    const celular = document.getElementById('est-celular').value;
     const email = document.getElementById('est-email').value;
 
-    if (!codigo || !nombre || !apellido) {
+    if (!codigo || !dni || !nombre || !apellidoPaterno || !apellidoMaterno) {
         alert('Completa todos los campos obligatorios');
         return;
     }
 
     const { error } = await supabase.from('estudiantes').insert({
         codigo_unico: codigo,
+        dni: dni,
         nombre,
-        apellido,
+        apellido_paterno: apellidoPaterno,
+        apellido_materno: apellidoMaterno,
+        celular: celular || null,
         email: email || null,
         especialidad: currentEspecialidad,
         anio: currentAnio
@@ -565,8 +685,11 @@ async function agregarEstudiante() {
     }
 
     document.getElementById('est-codigo').value = '';
+    document.getElementById('est-dni').value = '';
     document.getElementById('est-nombre').value = '';
-    document.getElementById('est-apellido').value = '';
+    document.getElementById('est-apellido-paterno').value = '';
+    document.getElementById('est-apellido-materno').value = '';
+    document.getElementById('est-celular').value = '';
     document.getElementById('est-email').value = '';
 
     alert('✓ Estudiante agregado correctamente');
@@ -605,8 +728,9 @@ async function generarQRsGrupoDirecto(especialidad, anio) {
     data.forEach((est, index) => {
         const qrItem = document.createElement('div');
         qrItem.className = 'qr-item';
+        const nombreCompleto = `${est.nombre} ${est.apellido_paterno} ${est.apellido_materno || ''}`;
         qrItem.innerHTML = `
-            <h3>${est.nombre} ${est.apellido}</h3>
+            <h3>${nombreCompleto}</h3>
             <p><strong>${est.codigo_unico}</strong></p>
             <div class="qr-code" id="qr-${index}"></div>
             <button class="download-btn" onclick="downloadSingleQR('qr-${index}', '${est.codigo_unico}')">📥 Descargar</button>
