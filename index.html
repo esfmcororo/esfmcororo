@@ -218,10 +218,10 @@
                         <h3>Lista de Usuarios</h3>
                         <p>Ver, editar y eliminar usuarios del sistema</p>
                     </div>
-                    <div class="module-card" onclick="showRegistroDocentes()">
+                    <div class="module-card" onclick="showListaUsuarios()">
                         <div class="module-icon">👨‍🏫</div>
-                        <h3>Registro de Docentes</h3>
-                        <p>Registrar nuevos usuarios docentes en el sistema</p>
+                        <h3>Lista de Usuarios</h3>
+                        <p>Ver, editar y eliminar usuarios del sistema</p>
                     </div>
                     <div class="module-card" onclick="showCargaMasiva()">
                         <div class="module-icon">📄</div>
@@ -232,53 +232,29 @@
             </div>
         </div>
 
-        <!-- Lista de Usuarios -->
-        <div id="lista-usuarios-section" class="section hidden">
+        <!-- Registro de Usuarios -->
+        <div id="registro-usuarios-section" class="section hidden">
             <div class="header">
-                <h1>Lista de Usuarios</h1>
+                <h1>Registro de Usuarios</h1>
                 <button onclick="showGestionUsuarios()" class="btn-secondary">← Volver</button>
             </div>
             <div class="container">
-                <div id="usuarios-list"></div>
-            </div>
-        </div>
-
-        <!-- Editar Usuario -->
-        <div id="editar-usuario-section" class="section hidden">
-            <div class="header">
-                <h1>Editar Usuario</h1>
-                <button onclick="showListaUsuarios()" class="btn-secondary">← Volver</button>
-            </div>
-            <div class="container">
                 <div class="card">
-                    <input type="hidden" id="edit-usuario-id">
-                    <input type="text" id="edit-usuario-ci" placeholder="CI/DNI">
-                    <input type="text" id="edit-usuario-nombre" placeholder="Nombre Completo">
-                    <input type="email" id="edit-usuario-email" placeholder="Email">
-                    <input type="tel" id="edit-usuario-celular" placeholder="Celular (opcional)">
-                    <select id="edit-usuario-rol">
-                        <option value="usuario">Usuario</option>
+                    <input type="text" id="usuario-nombre" placeholder="Nombre" required>
+                    <input type="text" id="usuario-apellido-paterno" placeholder="Apellido Paterno" required>
+                    <input type="text" id="usuario-apellido-materno" placeholder="Apellido Materno">
+                    <input type="text" id="usuario-ci" placeholder="CI/DNI">
+                    <input type="tel" id="usuario-celular" placeholder="Celular">
+                    <input type="email" id="usuario-email" placeholder="Email" required>
+                    <input type="password" id="usuario-password" placeholder="Contraseña" required>
+                    <input type="text" id="usuario-especialidad" placeholder="Especialidad (para docentes)">
+                    <input type="text" id="usuario-codigo-unico" placeholder="Código Único (RDA)">
+                    <select id="usuario-rol" required>
+                        <option value="">Seleccionar Rol</option>
                         <option value="admin">Administrador</option>
+                        <option value="usuario">Usuario</option>
                     </select>
-                    <button onclick="actualizarUsuario()" class="btn-primary">Actualizar Usuario</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Registro de Docentes -->
-        <div id="registro-docentes-section" class="section hidden">
-            <div class="header">
-                <h1>Registro de Docentes</h1>
-                <button onclick="showGestionUsuarios()" class="btn-secondary">← Volver</button>
-            </div>
-            <div class="container">
-                <div class="card">
-                    <input type="text" id="docente-ci" placeholder="CI/DNI">
-                    <input type="text" id="docente-nombre" placeholder="Nombre Completo">
-                    <input type="email" id="docente-email" placeholder="Email">
-                    <input type="password" id="docente-password" placeholder="Contraseña">
-                    <input type="tel" id="docente-celular" placeholder="Celular (opcional)">
-                    <button onclick="registrarDocente()" class="btn-primary">Registrar Docente</button>
+                    <button onclick="registrarUsuario()" class="btn-primary">Registrar Usuario</button>
                 </div>
             </div>
         </div>

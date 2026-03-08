@@ -2,7 +2,7 @@
 class TursoDB {
     constructor() {
         this.dbUrl = 'https://sfemcororo-sfemcororo.aws-us-east-1.turso.io';
-        this.authToken = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzI4MDY5NDIsImlkIjoiMDE5Y2MzODMtZjQwMS03MTc5LWJiMTAtY2IxMmUzYTI2YmUyIiwicmlkIjoiY2JhZTZjZjEtMTA0My00MWE1LTgwNWYtYmIzODY2ODc3MWY2In0.8f6HBSmVJGdfGQXjFu4_W5aFZ8RxNHIkm_T-5cLPoW99Kf0CBgQC0AtyfjLnynrQslryutioPCL1ZgcU4fMRBQ';
+        this.authToken = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiJkYjIyYTE4ZC1kYTUxLTQwMTUtOTcyYS05YWUxODY3NGEyNmQiLCJpYXQiOjE3NzMwMDQ0MzQsInJpZCI6IjNlMzZmY2I1LTZiN2MtNGMxNi05MjIyLWNiYzJkMmE3NjgzNSJ9.Xp_y2qDRZBR2Dk5DxxmOiPOC3h-50JvEyrWMoUMeN3ou2A6qQfx57NjaOlJ5nBGPHu-JxAEwIUPhpnvwuZYRAw';
         
         this.auth = {
             signInWithPassword: async ({ email, password }) => {
@@ -117,12 +117,16 @@ class TursoDB {
                 const values = Object.values(data);
                 const placeholders = fields.map(() => '?').join(', ');
                 
-                const id = Date.now().toString();
                 let insertData;
                 
-                if (tableName === 'asistencias') {
+                if (tableName === 'usuarios') {
+                    // Para usuarios, usar AUTOINCREMENT
+                    insertData = { ...data, created_at: new Date().toISOString() };
+                } else if (tableName === 'asistencias') {
+                    const id = Date.now().toString();
                     insertData = { id, ...data, timestamp: new Date().toISOString() };
                 } else {
+                    const id = Date.now().toString();
                     insertData = { id, ...data, created_at: new Date().toISOString() };
                 }
                 
@@ -142,27 +146,19 @@ class TursoDB {
     
     // Inicializar datos
     async initializeData() {
-        // Crear tablas si no existen
-        await this.query(`
-            CREATE TABLE IF NOT EXISTS usuarios (
-                id TEXT PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                nombre TEXT NOT NULL,
-                rol TEXT NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+        // Eliminar tablas obsoletas
+        await this.query(`DROP TABLE IF EXISTS perfiles`);
+        await this.query(`DROP TABLE IF EXISTS estudiantes_old`);
         
-        await this.query(`
-            CREATE TABLE IF NOT EXISTS perfiles (
-                id TEXT PRIMARY KEY,
-                email TEXT NOT NULL,
-                nombre TEXT NOT NULL,
-                rol TEXT NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+        // Verificar si existe admin
+        const adminExists = await this.query('SELECT id FROM usuarios WHERE email = ?', ['admin@escuela.com']);
+        if (!adminExists.rows || adminExists.rows.length === 0) {
+            // Crear admin por defecto solo si no existe
+            await this.query(`
+                INSERT INTO usuarios (ci, nombre, apellido_paterno, apellido_materno, email, password, especialidad, codigo_unico, rol) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, ['79310777', 'Admin', 'Sistema', 'Principal', 'admin@escuela.com', 'Admin123!', 'ADMINISTRACIÓN', 'ADM001', 'admin']);
+        }
         
         // Verificar si la tabla estudiantes existe y tiene la estructura correcta
         const tableInfo = await this.query(`PRAGMA table_info(estudiantes)`);
@@ -257,18 +253,11 @@ class TursoDB {
             )
         `);
         
-        // Insertar usuario admin si no existe
-        const adminExists = await this.query('SELECT id FROM usuarios WHERE email = ?', ['admin@escuela.com']);
-        if (adminExists.rows.length === 0) {
-            await this.query(
-                'INSERT INTO usuarios (id, email, password, nombre, rol) VALUES (?, ?, ?, ?, ?)',
-                ['1', 'admin@escuela.com', 'Admin123!', 'Administrador', 'admin']
-            );
-            
-            await this.query(
-                'INSERT INTO perfiles (id, email, nombre, rol) VALUES (?, ?, ?, ?)',
-                ['1', 'admin@escuela.com', 'Administrador', 'admin']
-            );
+        // Insertar usuario admin si no existe (legacy - ya no se usa)
+        const oldAdminExists = await this.query('SELECT id FROM usuarios WHERE id = ?', ['1']);
+        if (oldAdminExists.rows && oldAdminExists.rows.length > 0) {
+            // Eliminar admin legacy
+            await this.query('DELETE FROM usuarios WHERE id = ?', ['1']);
         }
     }
 }

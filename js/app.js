@@ -458,32 +458,18 @@ async function login() {
         if (emailOrCi === '79310777') {
             email = 'admin@escuela.com';
         }
-        // Verificar si es un CI (solo números) para futuros usuarios
-        else if (/^\d+$/.test(emailOrCi)) {
-            errorEl.textContent = 'CI no encontrado';
+
+        // Buscar usuario en tabla usuarios
+        const result = await tursodb.query(`SELECT * FROM usuarios WHERE (email = ? OR ci = ?) AND password = ?`, [email, emailOrCi, password]);
+
+        if (!result.rows || result.rows.length === 0) {
+            errorEl.textContent = 'Credenciales incorrectas';
             return;
         }
 
-        // Login con email
-        const { data, error } = await tursodb.auth.signInWithPassword({
-            email,
-            password
-        });
-
-        if (error) {
-            errorEl.textContent = error.message;
-            return;
-        }
-
-        // Cargar perfil del usuario
-        const { data: profile } = await tursodb
-            .from('perfiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-        currentUser = data.user;
-        currentProfile = profile || { rol: 'admin' }; // Fallback para admin
+        const user = result.rows[0];
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        currentUser = user;
         showDashboard();
     } catch (err) {
         errorEl.textContent = 'Error de conexión: ' + err.message;
@@ -515,6 +501,27 @@ function showLogin() {
 function showDashboard() {
     hideAllSections();
     document.getElementById('dashboard-section').classList.add('active');
+    
+    // Mostrar información del usuario logueado
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (user) {
+        const userInfoHtml = `
+            <h4>${user.nombre}</h4>
+            <p>CI: ${user.ci}</p>
+            <span class="user-role ${user.rol}">${user.rol}</span>
+        `;
+        
+        // Crear o actualizar el contenedor de información del usuario
+        let userInfoDiv = document.getElementById('user-info-container');
+        if (!userInfoDiv) {
+            userInfoDiv = document.createElement('div');
+            userInfoDiv.id = 'user-info-container';
+            userInfoDiv.className = 'user-info';
+            document.body.appendChild(userInfoDiv);
+        }
+        userInfoDiv.innerHTML = userInfoHtml;
+        userInfoDiv.style.display = 'block';
+    }
 }
 
 function showAsistenciaModule() {
@@ -865,6 +872,11 @@ function showScanner(eventoId, eventoNombre) {
     });
 }
 
+function isAdmin() {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    return currentUser && currentUser.rol === 'admin';
+}
+
 function showEstudiantes() {
     if (!isAdmin()) {
         alert('Solo administradores pueden gestionar estudiantes');
@@ -882,6 +894,12 @@ function showAgregarEstudiante() {
 
 function hideAllSections() {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    
+    // Ocultar información del usuario cuando no está en dashboard
+    const userInfoDiv = document.getElementById('user-info-container');
+    if (userInfoDiv) {
+        userInfoDiv.style.display = 'none';
+    }
     
     // Detener temporizador si existe
     if (eventoTimer) {
@@ -958,9 +976,8 @@ async function loadEventos(page = 1) {
 
     // Filtrar eventos según rol
     let eventos = data || [];
-    if (!isAdmin()) {
-        eventos = eventos.filter(evento => evento.usuario_id === currentUser.id);
-    }
+    // Los usuarios pueden ver todos los eventos para tomar asistencia
+    // Solo filtrar si es necesario para otras funciones específicas
     
     // Filtrar solo eventos activos
     eventos = eventos.filter(evento => evento.activo);
@@ -1010,7 +1027,7 @@ async function loadEventos(page = 1) {
                     Tomar Asistencia
                 </button>
                 <button class="btn-info" onclick="verListaAsistencias('${evento.id}', '${evento.nombre.replace(/'/g, "\\'")}')">📋 Ver Lista</button>
-                ${!tieneAsistencias ? 
+                ${!tieneAsistencias && isAdmin() ? 
                     `<button class="btn-danger" onclick="eliminarEvento('${evento.id}')">🗑️ Eliminar</button>` : ''
                 }
             </div>
@@ -2351,3 +2368,114 @@ async function registrarDocente() {
         alert('Error: ' + err.message);
     }
 }
+function showRegistroUsuarios() {
+    hideAllSections();
+    document.getElementById('registro-usuarios-section').classList.add('active');
+}
+
+function registrarUsuario() {
+    const nombre = document.getElementById('usuario-nombre')?.value?.trim();
+    const apellidoPaterno = document.getElementById('usuario-apellido-paterno')?.value?.trim();
+    const apellidoMaterno = document.getElementById('usuario-apellido-materno')?.value?.trim() || 'SIN DATO';
+    const ci = document.getElementById('usuario-ci')?.value?.trim() || 'SIN DATO';
+    const celular = document.getElementById('usuario-celular')?.value?.trim() || 'SIN DATO';
+    const email = document.getElementById('usuario-email')?.value?.trim();
+    const password = document.getElementById('usuario-password')?.value;
+    const especialidad = document.getElementById('usuario-especialidad')?.value?.trim() || 'SIN DATO';
+    const codigoUnico = document.getElementById('usuario-codigo-unico')?.value?.trim() || 'SIN DATO';
+    const rol = document.getElementById('usuario-rol')?.value;
+
+    if (!nombre || !apellidoPaterno || !email || !password || !rol) {
+        alert('Por favor completa todos los campos obligatorios');
+        return;
+    }
+
+    const nombreCompleto = `${nombre} ${apellidoPaterno} ${apellidoMaterno !== 'SIN DATO' ? apellidoMaterno : ''}`.trim();
+
+    // Llamar directamente a la inserción sin usar registrarDocente
+    insertarUsuario({
+        ci,
+        nombre: nombreCompleto,
+        apellido_paterno: apellidoPaterno,
+        apellido_materno: apellidoMaterno,
+        email,
+        password,
+        celular,
+        especialidad,
+        codigo_unico: codigoUnico,
+        rol
+    });
+
+    // Limpiar formulario
+    const campos = ['usuario-nombre', 'usuario-apellido-paterno', 'usuario-apellido-materno', 'usuario-ci', 'usuario-celular', 'usuario-email', 'usuario-password', 'usuario-especialidad', 'usuario-codigo-unico', 'usuario-rol'];
+    campos.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+}
+
+async function insertarUsuario(userData) {
+    if (!checkAdminPermissions()) {
+        alert('Solo los administradores pueden registrar usuarios');
+        return;
+    }
+
+    try {
+        const { error } = await tursodb.from('usuarios').insert(userData);
+
+        if (error) {
+            alert('Error: ' + error.message);
+            return;
+        }
+
+        alert('✓ Usuario registrado correctamente');
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+function showListaUsuarios() {
+    showRegistroUsuarios();
+}
+// Control de permisos por rol
+function checkAdminPermissions() {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    return currentUser && currentUser.rol === 'admin';
+}
+
+function showGestionUsuarios() {
+    if (!checkAdminPermissions()) {
+        alert('Solo los administradores pueden acceder a la gestión de usuarios');
+        return;
+    }
+    hideAllSections();
+    document.getElementById('gestion-usuarios-section').classList.add('active');
+}
+
+// Sobrescribir función de eliminar usuario con permisos
+const originalEliminarUsuario = window.eliminarUsuario;
+window.eliminarUsuario = function(id) {
+    if (!checkAdminPermissions()) {
+        alert('Solo los administradores pueden eliminar usuarios');
+        return;
+    }
+    if (originalEliminarUsuario) {
+        originalEliminarUsuario(id);
+    }
+};
+
+// Sobrescribir función de editar usuario con permisos
+const originalShowEditarUsuario = window.showEditarUsuario;
+window.showEditarUsuario = function(id) {
+    if (!checkAdminPermissions()) {
+        alert('Solo los administradores pueden editar usuarios');
+        return;
+    }
+    if (originalShowEditarUsuario) {
+        originalShowEditarUsuario(id);
+    }
+};
+// Función para verificar y crear admin si no existe
+// Sistema inicializado al cargar
+window.addEventListener('DOMContentLoaded', async function() {
+    await tursodb.initializeData();
+});
