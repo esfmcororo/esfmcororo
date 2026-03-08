@@ -213,6 +213,11 @@
             </div>
             <div class="container">
                 <div class="modules-grid">
+                    <div class="module-card" onclick="showListaUsuarios()">
+                        <div class="module-icon">👥</div>
+                        <h3>Lista de Usuarios</h3>
+                        <p>Ver, editar y eliminar usuarios del sistema</p>
+                    </div>
                     <div class="module-card" onclick="showRegistroDocentes()">
                         <div class="module-icon">👨‍🏫</div>
                         <h3>Registro de Docentes</h3>
@@ -223,6 +228,39 @@
                         <h3>Carga Masiva</h3>
                         <p>Subir estudiantes desde archivo Excel</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Usuarios -->
+        <div id="lista-usuarios-section" class="section hidden">
+            <div class="header">
+                <h1>Lista de Usuarios</h1>
+                <button onclick="showGestionUsuarios()" class="btn-secondary">← Volver</button>
+            </div>
+            <div class="container">
+                <div id="usuarios-list"></div>
+            </div>
+        </div>
+
+        <!-- Editar Usuario -->
+        <div id="editar-usuario-section" class="section hidden">
+            <div class="header">
+                <h1>Editar Usuario</h1>
+                <button onclick="showListaUsuarios()" class="btn-secondary">← Volver</button>
+            </div>
+            <div class="container">
+                <div class="card">
+                    <input type="hidden" id="edit-usuario-id">
+                    <input type="text" id="edit-usuario-ci" placeholder="CI/DNI">
+                    <input type="text" id="edit-usuario-nombre" placeholder="Nombre Completo">
+                    <input type="email" id="edit-usuario-email" placeholder="Email">
+                    <input type="tel" id="edit-usuario-celular" placeholder="Celular (opcional)">
+                    <select id="edit-usuario-rol">
+                        <option value="usuario">Usuario</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                    <button onclick="actualizarUsuario()" class="btn-primary">Actualizar Usuario</button>
                 </div>
             </div>
         </div>

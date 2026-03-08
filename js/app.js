@@ -2145,3 +2145,209 @@ async function exportarAsistenciasExcel() {
         alert('Error al exportar el archivo.');
     }
 }
+
+// ========== GESTIÓN DE USUARIOS CON ROLES ==========
+
+function showListaUsuarios() {
+    if (!isAdmin()) {
+        alert('Solo administradores pueden gestionar usuarios');
+        return;
+    }
+    hideAllSections();
+    document.getElementById('lista-usuarios-section').classList.add('active');
+    loadUsuarios();
+}
+
+function showEditarUsuario(usuarioId) {
+    if (!isAdmin()) {
+        alert('Solo administradores pueden editar usuarios');
+        return;
+    }
+    hideAllSections();
+    document.getElementById('editar-usuario-section').classList.add('active');
+    loadUsuarioParaEditar(usuarioId);
+}
+
+async function loadUsuarios() {
+    const listEl = document.getElementById('usuarios-list');
+    listEl.innerHTML = '<p style="color: white;">Cargando usuarios...</p>';
+
+    try {
+        const { data, error } = await tursodb.auth.admin.listUsers();
+        
+        if (error) {
+            listEl.innerHTML = '<p style="color: white;">Error cargando usuarios</p>';
+            return;
+        }
+
+        if (!data || data.users.length === 0) {
+            listEl.innerHTML = '<p style="color: white;">No hay usuarios registrados</p>';
+            return;
+        }
+
+        let html = '<div class="usuarios-grid">';
+        
+        data.users.forEach(usuario => {
+            const metadata = usuario.user_metadata || {};
+            const rol = metadata.rol || 'usuario';
+            const nombre = metadata.nombre || 'Sin nombre';
+            const ci = metadata.ci || 'Sin CI';
+            const celular = metadata.celular || '';
+            
+            html += `
+                <div class="usuario-card">
+                    <div class="usuario-info">
+                        <h3>${nombre}</h3>
+                        <p><strong>Email:</strong> ${usuario.email}</p>
+                        <p><strong>CI:</strong> ${ci}</p>
+                        <p><strong>Rol:</strong> <span class="rol-badge ${rol}">${rol.toUpperCase()}</span></p>
+                        <p><strong>Celular:</strong> ${celular || 'N/A'}</p>
+                        <p><strong>Último acceso:</strong> ${usuario.last_sign_in_at ? new Date(usuario.last_sign_in_at).toLocaleDateString('es-BO') : 'Nunca'}</p>
+                    </div>
+                    <div class="usuario-actions">
+                        <button onclick="showEditarUsuario('${usuario.id}')" class="btn-info">✏️ Editar</button>
+                        ${usuario.email !== 'admin@escuela.com' ? 
+                            `<button onclick="eliminarUsuario('${usuario.id}', '${nombre}')" class="btn-danger">🗑️ Eliminar</button>` : 
+                            '<span style="color: #666; font-size: 12px;">Admin principal</span>'
+                        }
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        listEl.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        listEl.innerHTML = '<p style="color: white;">Error de conexión</p>';
+    }
+}
+
+async function loadUsuarioParaEditar(usuarioId) {
+    try {
+        const { data, error } = await tursodb.auth.admin.getUserById(usuarioId);
+        
+        if (error || !data.user) {
+            alert('Error cargando datos del usuario');
+            return;
+        }
+        
+        const usuario = data.user;
+        const metadata = usuario.user_metadata || {};
+        
+        document.getElementById('edit-usuario-id').value = usuario.id;
+        document.getElementById('edit-usuario-ci').value = metadata.ci || '';
+        document.getElementById('edit-usuario-nombre').value = metadata.nombre || '';
+        document.getElementById('edit-usuario-email').value = usuario.email || '';
+        document.getElementById('edit-usuario-celular').value = metadata.celular || '';
+        document.getElementById('edit-usuario-rol').value = metadata.rol || 'usuario';
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error cargando usuario');
+    }
+}
+
+async function actualizarUsuario() {
+    const usuarioId = document.getElementById('edit-usuario-id').value;
+    const ci = document.getElementById('edit-usuario-ci').value;
+    const nombre = document.getElementById('edit-usuario-nombre').value;
+    const email = document.getElementById('edit-usuario-email').value;
+    const celular = document.getElementById('edit-usuario-celular').value;
+    const rol = document.getElementById('edit-usuario-rol').value;
+
+    if (!nombre || !email) {
+        alert('Nombre y email son obligatorios');
+        return;
+    }
+
+    try {
+        const { error } = await tursodb.auth.admin.updateUserById(usuarioId, {
+            email,
+            user_metadata: {
+                nombre,
+                ci,
+                celular,
+                rol
+            }
+        });
+
+        if (error) {
+            alert('Error: ' + error.message);
+            return;
+        }
+
+        alert('✓ Usuario actualizado correctamente');
+        showListaUsuarios();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error actualizando usuario');
+    }
+}
+
+async function eliminarUsuario(usuarioId, nombre) {
+    if (!confirm(`¿Estás seguro de eliminar al usuario "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        const { error } = await tursodb.auth.admin.deleteUser(usuarioId);
+
+        if (error) {
+            alert('Error: ' + error.message);
+            return;
+        }
+
+        alert('✓ Usuario eliminado correctamente');
+        loadUsuarios();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error eliminando usuario');
+    }
+}
+
+async function registrarDocente() {
+    const ci = document.getElementById('docente-ci').value;
+    const nombre = document.getElementById('docente-nombre').value;
+    const email = document.getElementById('docente-email').value;
+    const password = document.getElementById('docente-password').value;
+    const celular = document.getElementById('docente-celular').value;
+
+    if (!ci || !nombre || !email || !password) {
+        alert('Completa todos los campos obligatorios');
+        return;
+    }
+
+    try {
+        const { data, error } = await tursodb.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    nombre,
+                    ci,
+                    celular: celular || null,
+                    rol: 'usuario'
+                }
+            }
+        });
+
+        if (error) {
+            alert('Error: ' + error.message);
+            return;
+        }
+
+        document.getElementById('docente-ci').value = '';
+        document.getElementById('docente-nombre').value = '';
+        document.getElementById('docente-email').value = '';
+        document.getElementById('docente-password').value = '';
+        document.getElementById('docente-celular').value = '';
+
+        alert('✓ Docente registrado correctamente');
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
