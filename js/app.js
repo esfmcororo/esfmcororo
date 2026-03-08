@@ -131,24 +131,39 @@ async function syncOfflineQueue() {
         // Procesar en lotes pequeños para optimizar ancho de banda
         const batch = offlineQueue.splice(0, MAX_BATCH_SIZE);
         let syncedCount = 0;
+        let skippedCount = 0;
         
         for (const asistencia of batch) {
             try {
-                const { error } = await tursodb.from('asistencias').insert({
-                    estudiante_id: asistencia.estudiante_id,
-                    evento_id: asistencia.evento_id,
-                    timestamp: asistencia.timestamp
-                });
+                // VERIFICAR SI YA EXISTE antes de insertar
+                const { data: existente } = await tursodb.query(`
+                    SELECT id FROM asistencias 
+                    WHERE estudiante_id = ? AND evento_id = ?
+                `, [asistencia.estudiante_id, asistencia.evento_id]);
                 
-                if (!error) {
-                    syncedCount++;
+                if (existente && existente.length > 0) {
+                    // Ya existe - saltar sin error
+                    skippedCount++;
+                    console.log(`Asistencia ya existe, saltando: estudiante_id=${asistencia.estudiante_id}, evento_id=${asistencia.evento_id}`);
                 } else {
-                    // Devolver a la cola si falla
-                    offlineQueue.unshift(asistencia);
-                    console.error('Error sincronizando asistencia:', error);
+                    // No existe - insertar
+                    const { error } = await tursodb.from('asistencias').insert({
+                        estudiante_id: asistencia.estudiante_id,
+                        evento_id: asistencia.evento_id,
+                        timestamp: asistencia.timestamp
+                    });
+                    
+                    if (!error) {
+                        syncedCount++;
+                        console.log(`Asistencia sincronizada: estudiante_id=${asistencia.estudiante_id}`);
+                    } else {
+                        // Error insertando - devolver a la cola
+                        offlineQueue.unshift(asistencia);
+                        console.error('Error sincronizando asistencia:', error);
+                    }
                 }
             } catch (err) {
-                // Devolver a la cola si falla
+                // Error de red - devolver a la cola
                 offlineQueue.unshift(asistencia);
                 console.error('Error de red sincronizando:', err);
             }
@@ -157,8 +172,8 @@ async function syncOfflineQueue() {
         saveOfflineQueue();
         lastSyncTime = Date.now();
         
-        if (syncedCount > 0) {
-            console.log(`${syncedCount} asistencias sincronizadas`);
+        if (syncedCount > 0 || skippedCount > 0) {
+            console.log(`Sincronización: ${syncedCount} nuevas, ${skippedCount} ya existían`);
             // Recargar lista de asistencias si estamos en la pantalla del escáner
             if (currentEventId && document.getElementById('scanner-section').classList.contains('active')) {
                 loadAsistencias(currentEventId);
