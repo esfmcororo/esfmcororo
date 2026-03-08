@@ -18,7 +18,7 @@ let currentEventoNombre = null;
 
 // Umbrales calculados basados en datos reales de 35 registros
 const OPTIMAL_RESPONSE_TIME = 3.7; // segundos - tiempo promedio óptimo
-const CRITICAL_THRESHOLD = 7.5;    // segundos - 2x tiempo óptimo
+const CRITICAL_THRESHOLD = 5.0;    // segundos - umbral crítico ajustado
 const OFFLINE_THRESHOLD = 6.2;     // segundos - umbral más agresivo para red lenta
 
 // Variables de control de latencia
