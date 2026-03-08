@@ -14,6 +14,137 @@ let qrCodesGenerated = [];
 let currentEventoId = null;
 let currentEventoNombre = null;
 
+// ========== SISTEMA OFFLINE PARA OPTIMIZAR ANCHO DE BANDA ==========
+let offlineQueue = [];
+let syncInProgress = false;
+let lastSyncTime = 0;
+const SYNC_INTERVAL = 30000; // 30 segundos
+const MAX_BATCH_SIZE = 10; // Máximo 10 asistencias por lote
+
+// Cargar cola offline desde localStorage
+function loadOfflineQueue() {
+    try {
+        const saved = localStorage.getItem('asistencias_offline');
+        offlineQueue = saved ? JSON.parse(saved) : [];
+        console.log(`Cola offline cargada: ${offlineQueue.length} asistencias pendientes`);
+        updateOfflineIndicator();
+    } catch (error) {
+        console.error('Error cargando cola offline:', error);
+        offlineQueue = [];
+    }
+}
+
+// Guardar cola offline en localStorage
+function saveOfflineQueue() {
+    try {
+        localStorage.setItem('asistencias_offline', JSON.stringify(offlineQueue));
+        updateOfflineIndicator();
+    } catch (error) {
+        console.error('Error guardando cola offline:', error);
+    }
+}
+
+// Actualizar indicador visual de estado offline
+function updateOfflineIndicator() {
+    const indicator = document.getElementById('offline-indicator');
+    if (!indicator) return;
+    
+    if (offlineQueue.length > 0) {
+        indicator.style.display = 'block';
+        indicator.textContent = `📱 ${offlineQueue.length} pendientes`;
+        indicator.className = 'offline-indicator pending';
+    } else {
+        indicator.style.display = 'none';
+    }
+}
+
+// Agregar asistencia a cola offline
+function addToOfflineQueue(estudianteId, eventoId, timestamp = null) {
+    const asistencia = {
+        id: Date.now() + Math.random(), // ID único temporal
+        estudiante_id: estudianteId,
+        evento_id: eventoId,
+        timestamp: timestamp || new Date().toISOString(),
+        created_offline: true
+    };
+    
+    offlineQueue.push(asistencia);
+    saveOfflineQueue();
+    console.log('Asistencia agregada a cola offline:', asistencia);
+}
+
+// Sincronizar cola offline con servidor
+async function syncOfflineQueue() {
+    if (syncInProgress || offlineQueue.length === 0) return;
+    
+    syncInProgress = true;
+    const indicator = document.getElementById('offline-indicator');
+    
+    try {
+        if (indicator) {
+            indicator.textContent = '🔄 Sincronizando...';
+            indicator.className = 'offline-indicator syncing';
+        }
+        
+        // Procesar en lotes pequeños para optimizar ancho de banda
+        const batch = offlineQueue.splice(0, MAX_BATCH_SIZE);
+        let syncedCount = 0;
+        
+        for (const asistencia of batch) {
+            try {
+                const { error } = await tursodb.from('asistencias').insert({
+                    estudiante_id: asistencia.estudiante_id,
+                    evento_id: asistencia.evento_id,
+                    timestamp: asistencia.timestamp
+                });
+                
+                if (!error) {
+                    syncedCount++;
+                } else {
+                    // Devolver a la cola si falla
+                    offlineQueue.unshift(asistencia);
+                    console.error('Error sincronizando asistencia:', error);
+                }
+            } catch (err) {
+                // Devolver a la cola si falla
+                offlineQueue.unshift(asistencia);
+                console.error('Error de red sincronizando:', err);
+            }
+        }
+        
+        saveOfflineQueue();
+        lastSyncTime = Date.now();
+        
+        if (syncedCount > 0) {
+            console.log(`${syncedCount} asistencias sincronizadas`);
+            // Recargar lista de asistencias si estamos en la pantalla del escáner
+            if (currentEventId && document.getElementById('scanner-section').classList.contains('active')) {
+                loadAsistencias(currentEventId);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error en sincronización:', error);
+    } finally {
+        syncInProgress = false;
+        updateOfflineIndicator();
+    }
+}
+
+// Iniciar sincronización automática
+function startAutoSync() {
+    setInterval(async () => {
+        if (Date.now() - lastSyncTime > SYNC_INTERVAL) {
+            await syncOfflineQueue();
+        }
+    }, SYNC_INTERVAL);
+}
+
+// Forzar sincronización manual
+async function forceSyncOffline() {
+    await syncOfflineQueue();
+}
+
 // ========== AUTENTICACIÓN CON SUPABASE AUTH ==========
 
 async function login() {
@@ -780,49 +911,67 @@ async function onScanSuccess(codigoUnico) {
             return;
         }
 
-        const { data: todasAsistencias } = await tursodb
-            .from('asistencias')
-            .select('*');
-        
-        const asistenciaExiste = todasAsistencias?.find(a => 
+        // Verificar duplicados en cola offline primero
+        const existeOffline = offlineQueue.find(a => 
             a.estudiante_id === estudiante.id && a.evento_id === currentEventId
         );
-
-
-
-        if (asistenciaExiste) {
-            showMessage('Asistencia ya registrada', 'warning');
-            setTimeout(() => { isScanning = false; }, 2000);
-            return;
-        }
-
-        const { error: insertError } = await tursodb.from('asistencias').insert({
-            estudiante_id: estudiante.id,
-            evento_id: currentEventId
-        });
-
-        if (insertError) {
-            console.error('Error insertando asistencia:', insertError);
-            showMessage('Error al registrar asistencia', 'error');
-            setTimeout(() => { isScanning = false; }, 2000);
-            return;
-        }
-
-        showMessage(`✓ ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Asistencia registrada`, 'success');
         
-        // Esperar un momento antes de recargar las asistencias
-        setTimeout(() => {
-            loadAsistencias(currentEventId);
-        }, 500);
+        if (existeOffline) {
+            showMessage('Asistencia ya registrada (pendiente de sincronizar)', 'warning');
+            setTimeout(() => { isScanning = false; }, 2000);
+            return;
+        }
+
+        // Verificar duplicados en servidor (solo si hay conexión)
+        try {
+            const { data: todasAsistencias } = await tursodb
+                .from('asistencias')
+                .select('*');
+            
+            const asistenciaExiste = todasAsistencias?.find(a => 
+                a.estudiante_id === estudiante.id && a.evento_id === currentEventId
+            );
+
+            if (asistenciaExiste) {
+                showMessage('Asistencia ya registrada', 'warning');
+                setTimeout(() => { isScanning = false; }, 2000);
+                return;
+            }
+        } catch (networkError) {
+            console.log('Sin conexión para verificar duplicados, continuando...');
+        }
+
+        // Intentar guardar directamente primero
+        try {
+            const { error: insertError } = await tursodb.from('asistencias').insert({
+                estudiante_id: estudiante.id,
+                evento_id: currentEventId
+            });
+
+            if (!insertError) {
+                // Éxito - guardado directamente
+                showMessage(`✓ ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Asistencia registrada`, 'success');
+                setTimeout(() => {
+                    loadAsistencias(currentEventId);
+                }, 500);
+            } else {
+                throw new Error('Error de base de datos');
+            }
+        } catch (networkError) {
+            // Sin conexión - guardar en cola offline
+            addToOfflineQueue(estudiante.id, currentEventId);
+            showMessage(`📱 ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Guardado offline`, 'success');
+            
+            // Mostrar en lista local inmediatamente
+            addToLocalAsistenciasList(estudiante);
+        }
         
         // Reiniciar escáner después de 2 segundos
         setTimeout(() => { 
             isScanning = false;
-            // Si hay cámara activa, continuar escaneando
             if (html5QrCode && html5QrCode.isScanning) {
                 // Ya está escaneando, solo resetear flag
             } else {
-                // Reiniciar escáner si se detuvo
                 startScanner();
             }
         }, 2000);
@@ -885,7 +1034,44 @@ async function loadAsistencias(eventoId) {
     });
 }
 
-// ========== UTILIDADES ==========
+// Agregar asistencia a lista local (para mostrar inmediatamente)
+function addToLocalAsistenciasList(estudiante) {
+    const listEl = document.getElementById('asistencias-list');
+    if (!listEl) return;
+    
+    const item = document.createElement('div');
+    item.className = 'asistencia-item offline-item';
+    const time = new Date().toLocaleString('es-BO', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour12: false
+    });
+    
+    item.innerHTML = `
+        <div style="width: 100%;">
+            <strong style="font-size: 16px; color: #333;">${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)}</strong><br>
+            <small style="color: #666; font-size: 13px;">
+                📋 ${estudiante.codigo_unico} | 
+                🆔 ${formatearCampoOpcional(estudiante.dni, 'Sin DNI')} | 
+                🎓 ${formatearCampoOpcional(estudiante.especialidad, 'Sin especialidad')} | 
+                📅 Año ${formatearCampoOpcional(estudiante.anio_formacion, 'N/A')}
+            </small>
+        </div>
+        <span style="color: #ff9800; font-weight: bold;">📱 ${time}</span>
+    `;
+    
+    // Insertar al inicio de la lista
+    listEl.insertBefore(item, listEl.firstChild);
+}
+
+// Inicializar sistema offline al cargar la página
+window.addEventListener('DOMContentLoaded', function() {
+    loadOfflineQueue();
+    startAutoSync();
+});
 
 function formatearCampoOpcional(valor, valorPorDefecto = '') {
     if (!valor || valor === 'SIN DATO' || valor === 'Sin DNI' || valor === 'Sin celular' || valor === 'Sin email' || valor === 'N/A') {

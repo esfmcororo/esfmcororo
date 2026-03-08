@@ -607,3 +607,45 @@ button {
     flex: 2;
     min-width: 120px;
 }
+/* Estilos para sistema offline */
+.offline-indicator {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.offline-indicator.pending {
+    background: #ff9800;
+    color: white;
+}
+
+.offline-indicator.syncing {
+    background: #2196f3;
+    color: white;
+}
+
+.btn-sync {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 10px;
+}
+
+.btn-sync:hover {
+    background: #45a049;
+}
+
+.offline-item {
+    border-left: 4px solid #ff9800;
+    background: #fff8e1;
+}

@@ -94,8 +94,15 @@
         <div id="scanner-section" class="section hidden">
             <div class="header">
                 <h1 id="evento-title"></h1>
-                <button onclick="showAsistenciaModule()" class="btn-secondary">← Volver</button>
+                <div>
+                    <button onclick="forceSyncOffline()" class="btn-sync" title="Sincronizar asistencias offline">🔄 Sync</button>
+                    <button onclick="showAsistenciaModule()" class="btn-secondary">← Volver</button>
+                </div>
             </div>
+            
+            <!-- Indicador offline -->
+            <div id="offline-indicator" class="offline-indicator" style="display: none;"></div>
+            
             <div class="container">
                 <div id="reader"></div>
                 <div id="mensaje"></div>
