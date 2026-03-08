@@ -1181,7 +1181,7 @@ async function onScanSuccess(codigoUnico) {
             return;
         }
 
-        // Verificar duplicados en cola offline primero
+        // VERIFICAR DUPLICADOS EN COLA OFFLINE (por estudiante_id Y evento_id)
         const existeOffline = offlineQueue.find(a => 
             a.estudiante_id === estudiante.id && a.evento_id === currentEventId
         );
@@ -1193,22 +1193,24 @@ async function onScanSuccess(codigoUnico) {
         }
 
         // Verificar duplicados en servidor (solo si hay conexión)
+        let yaExisteEnServidor = false;
         try {
-            const { data: todasAsistencias } = await tursodb
-                .from('asistencias')
-                .select('*');
+            const { data: existeEnBD } = await tursodb.query(`
+                SELECT id FROM asistencias 
+                WHERE estudiante_id = ? AND evento_id = ?
+            `, [estudiante.id, currentEventId]);
             
-            const asistenciaExiste = todasAsistencias?.find(a => 
-                a.estudiante_id === estudiante.id && a.evento_id === currentEventId
-            );
-
-            if (asistenciaExiste) {
-                showMessage('Asistencia ya registrada', 'warning');
-                setTimeout(() => { isScanning = false; }, 2000);
-                return;
+            if (existeEnBD && existeEnBD.length > 0) {
+                yaExisteEnServidor = true;
             }
         } catch (networkError) {
-            console.log('Sin conexión para verificar duplicados, continuando...');
+            console.log('Sin conexión para verificar duplicados en servidor');
+        }
+
+        if (yaExisteEnServidor) {
+            showMessage('Asistencia ya registrada', 'warning');
+            setTimeout(() => { isScanning = false; }, 2000);
+            return;
         }
 
         // Intentar guardar directamente primero
