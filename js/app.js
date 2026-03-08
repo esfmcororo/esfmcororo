@@ -14,6 +14,140 @@ let qrCodesGenerated = [];
 let currentEventoId = null;
 let currentEventoNombre = null;
 
+// ========== SISTEMA ADAPTATIVO DE LATENCIA ==========
+
+// Umbrales calculados basados en datos reales de 35 registros
+const OPTIMAL_RESPONSE_TIME = 3.7; // segundos - tiempo promedio óptimo
+const CRITICAL_THRESHOLD = 7.5;    // segundos - 2x tiempo óptimo
+const OFFLINE_THRESHOLD = 11.2;    // segundos - 3x tiempo óptimo
+
+// Variables de control de latencia
+let latencyHistory = [];
+let consecutiveSlowRequests = 0;
+let isAdaptiveOfflineMode = false;
+let lastLatencyCheck = 0;
+
+// Medir latencia de una operación
+function measureLatency(startTime) {
+    const endTime = Date.now();
+    const latency = (endTime - startTime) / 1000; // en segundos
+    
+    // Mantener historial de últimas 10 mediciones
+    latencyHistory.push(latency);
+    if (latencyHistory.length > 10) {
+        latencyHistory.shift();
+    }
+    
+    return latency;
+}
+
+// Evaluar si debe activar modo offline adaptativo
+function evaluateNetworkCondition(latency) {
+    console.log(`📊 Latencia actual: ${latency.toFixed(1)}s (Óptimo: ${OPTIMAL_RESPONSE_TIME}s)`);
+    
+    if (latency > OFFLINE_THRESHOLD) {
+        consecutiveSlowRequests++;
+        console.log(`🐌 Latencia crítica detectada: ${latency.toFixed(1)}s (${consecutiveSlowRequests}/3)`);
+        
+        if (consecutiveSlowRequests >= 3) {
+            activateAdaptiveOfflineMode();
+            return true; // Usar offline
+        }
+    } else if (latency <= OPTIMAL_RESPONSE_TIME) {
+        // Red estable - resetear contadores
+        consecutiveSlowRequests = 0;
+        if (isAdaptiveOfflineMode && latencyHistory.length >= 3) {
+            const avgRecent = latencyHistory.slice(-3).reduce((a, b) => a + b) / 3;
+            if (avgRecent <= CRITICAL_THRESHOLD) {
+                deactivateAdaptiveOfflineMode();
+            }
+        }
+    }
+    
+    return isAdaptiveOfflineMode;
+}
+
+// Activar modo offline adaptativo
+function activateAdaptiveOfflineMode() {
+    if (!isAdaptiveOfflineMode) {
+        isAdaptiveOfflineMode = true;
+        consecutiveSlowRequests = 0;
+        console.log('🔄 MODO OFFLINE ADAPTATIVO ACTIVADO - Red lenta detectada');
+        
+        // Mostrar indicador visual
+        const indicator = document.getElementById('offline-indicator');
+        if (indicator) {
+            indicator.style.display = 'block';
+            indicator.textContent = '🐌 Modo Offline (Red Lenta)';
+            indicator.className = 'offline-indicator adaptive';
+        }
+        
+        // Aumentar frecuencia de sincronización
+        startAdaptiveSync();
+    }
+}
+
+// Desactivar modo offline adaptativo
+function deactivateAdaptiveOfflineMode() {
+    if (isAdaptiveOfflineMode) {
+        isAdaptiveOfflineMode = false;
+        console.log('✅ MODO ONLINE RESTAURADO - Red estabilizada');
+        
+        // Ocultar indicador
+        const indicator = document.getElementById('offline-indicator');
+        if (indicator && !offlineQueue.length) {
+            indicator.style.display = 'none';
+        }
+        
+        // Sincronizar inmediatamente
+        syncOfflineQueue();
+    }
+}
+
+// Sincronización adaptativa más frecuente
+function startAdaptiveSync() {
+    const adaptiveInterval = setInterval(async () => {
+        if (!isAdaptiveOfflineMode) {
+            clearInterval(adaptiveInterval);
+            return;
+        }
+        
+        // Probar conectividad con request rápido
+        const testStart = Date.now();
+        try {
+            await tursodb.query('SELECT 1');
+            const testLatency = measureLatency(testStart);
+            
+            if (testLatency <= CRITICAL_THRESHOLD) {
+                // Red mejoró - intentar sincronizar
+                await syncOfflineQueue();
+                
+                // Si sincronización exitosa, evaluar salir de modo offline
+                if (offlineQueue.length === 0) {
+                    evaluateNetworkCondition(testLatency);
+                }
+            }
+        } catch (error) {
+            console.log('🔄 Red aún inestable, manteniendo modo offline');
+        }
+    }, 15000); // Cada 15 segundos en modo adaptativo
+}
+
+// Mostrar estadísticas de latencia en consola
+function showLatencyStats() {
+    if (latencyHistory.length > 0) {
+        const avg = latencyHistory.reduce((a, b) => a + b) / latencyHistory.length;
+        const recent = latencyHistory.slice(-3);
+        const recentAvg = recent.reduce((a, b) => a + b) / recent.length;
+        
+        console.log('📊 ESTADÍSTICAS DE LATENCIA:');
+        console.log(`   Promedio general: ${avg.toFixed(1)}s`);
+        console.log(`   Promedio reciente: ${recentAvg.toFixed(1)}s`);
+        console.log(`   Estado: ${isAdaptiveOfflineMode ? 'OFFLINE ADAPTATIVO' : 'ONLINE'}`);
+        console.log(`   Umbral crítico: ${CRITICAL_THRESHOLD}s`);
+    }
+}
+
 // ========== SISTEMA OFFLINE PARA OPTIMIZAR ANCHO DE BANDA ==========
 let offlineQueue = [];
 let syncInProgress = false;
@@ -1051,6 +1185,8 @@ function scanFile() {
 async function onScanSuccess(codigoUnico) {
     if (isScanning) return;
     isScanning = true;
+    
+    const requestStart = Date.now(); // Iniciar medición de latencia
 
     try {
         let estudiante = null;
@@ -1065,12 +1201,19 @@ async function onScanSuccess(codigoUnico) {
             
             if (!error && data) {
                 estudiante = data;
+                // Medir latencia de la consulta
+                const queryLatency = measureLatency(requestStart);
+                const shouldUseOffline = evaluateNetworkCondition(queryLatency);
+                
+                if (shouldUseOffline) {
+                    throw new Error('Usando modo offline por latencia alta');
+                }
             }
         } catch (networkError) {
-            console.log('Sin conexión, buscando en cache local...');
+            console.log('Sin conexión o latencia alta, buscando en cache local...');
         }
         
-        // Si no se encontró en BD o no hay conexión, buscar en cache
+        // Si no se encontró en BD o hay problemas de red, buscar en cache
         if (!estudiante) {
             estudiante = findEstudianteInCache(codigoUnico);
         }
@@ -1081,7 +1224,7 @@ async function onScanSuccess(codigoUnico) {
             return;
         }
 
-        // VERIFICAR DUPLICADOS EN COLA OFFLINE (por estudiante_id Y evento_id)
+        // VERIFICAR DUPLICADOS EN COLA OFFLINE
         const existeOffline = offlineQueue.find(a => 
             a.estudiante_id === estudiante.id && a.evento_id === currentEventId
         );
@@ -1092,61 +1235,72 @@ async function onScanSuccess(codigoUnico) {
             return;
         }
 
-        // Verificar duplicados en servidor (solo si hay conexión)
-        let yaExisteEnServidor = false;
-        try {
-            const { data: existeEnBD } = await tursodb.query(`
-                SELECT id FROM asistencias 
-                WHERE estudiante_id = ? AND evento_id = ?
-            `, [estudiante.id, currentEventId]);
-            
-            if (existeEnBD && existeEnBD.length > 0) {
-                yaExisteEnServidor = true;
-            }
-        } catch (networkError) {
-            console.log('Sin conexión para verificar duplicados en servidor');
-        }
-
-        if (yaExisteEnServidor) {
-            showMessage('Asistencia ya registrada', 'warning');
-            setTimeout(() => { isScanning = false; }, 2000);
-            return;
-        }
-
-        // Intentar guardar directamente primero
-        try {
-            const { error: insertError } = await tursodb.from('asistencias').insert({
-                estudiante_id: estudiante.id,
-                evento_id: currentEventId
-            });
-
-            if (!insertError) {
-                // Éxito - guardado directamente
-                showMessage(`✓ ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Asistencia registrada`, 'success');
-                setTimeout(() => {
-                    loadAsistencias(currentEventId);
-                }, 500);
-            } else {
-                throw new Error('Error de base de datos');
-            }
-        } catch (networkError) {
-            // Sin conexión - guardar en cola offline
+        // Decidir si usar online u offline basado en latencia
+        const useOfflineMode = isAdaptiveOfflineMode || evaluateNetworkCondition(measureLatency(requestStart));
+        
+        if (useOfflineMode) {
+            // Modo offline - guardar en cola
             const agregado = addToOfflineQueue(estudiante.id, currentEventId);
             
             if (agregado) {
                 showMessage(`📱 ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Guardado offline`, 'success');
-                // Mostrar en lista local inmediatamente
                 addToLocalAsistenciasList(estudiante);
             } else {
                 showMessage('Asistencia ya registrada (en cola offline)', 'warning');
             }
+        } else {
+            // Modo online - intentar guardar directamente
+            try {
+                const insertStart = Date.now();
+                
+                // Verificar duplicados en servidor
+                const { data: existeEnBD } = await tursodb.query(`
+                    SELECT id FROM asistencias 
+                    WHERE estudiante_id = ? AND evento_id = ?
+                `, [estudiante.id, currentEventId]);
+                
+                if (existeEnBD && existeEnBD.length > 0) {
+                    showMessage('Asistencia ya registrada', 'warning');
+                    setTimeout(() => { isScanning = false; }, 2000);
+                    return;
+                }
+                
+                const { error: insertError } = await tursodb.from('asistencias').insert({
+                    estudiante_id: estudiante.id,
+                    evento_id: currentEventId
+                });
+                
+                // Medir latencia de inserción
+                const insertLatency = measureLatency(insertStart);
+                evaluateNetworkCondition(insertLatency);
+
+                if (!insertError) {
+                    showMessage(`✓ ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Asistencia registrada`, 'success');
+                    setTimeout(() => {
+                        loadAsistencias(currentEventId);
+                    }, 500);
+                } else {
+                    throw new Error('Error de base de datos');
+                }
+            } catch (networkError) {
+                // Fallo online - cambiar a offline
+                console.log('Fallo en modo online, cambiando a offline');
+                const agregado = addToOfflineQueue(estudiante.id, currentEventId);
+                
+                if (agregado) {
+                    showMessage(`📱 ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Guardado offline`, 'success');
+                    addToLocalAsistenciasList(estudiante);
+                } else {
+                    showMessage('Error guardando asistencia', 'error');
+                }
+            }
         }
         
-        // Reiniciar escáner después de 2 segundos
+        // Reiniciar escáner
         setTimeout(() => { 
             isScanning = false;
             if (html5QrCode && html5QrCode.isScanning) {
-                // Ya está escaneando, solo resetear flag
+                // Ya está escaneando
             } else {
                 startScanner();
             }
@@ -1251,6 +1405,16 @@ window.addEventListener('DOMContentLoaded', function() {
     
     // Actualizar cache de estudiantes al iniciar (si hay conexión)
     updateEstudiantesCache();
+    
+    // Mostrar estadísticas de latencia cada 30 segundos (solo en desarrollo)
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        setInterval(showLatencyStats, 30000);
+    }
+    
+    console.log('🚀 Sistema Adaptativo de Latencia Inicializado');
+    console.log(`   • Tiempo óptimo: ${OPTIMAL_RESPONSE_TIME}s`);
+    console.log(`   • Umbral crítico: ${CRITICAL_THRESHOLD}s`);
+    console.log(`   • Umbral offline: ${OFFLINE_THRESHOLD}s`);
 });
 
 function formatearCampoOpcional(valor, valorPorDefecto = '') {

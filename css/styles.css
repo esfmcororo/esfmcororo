@@ -625,6 +625,18 @@ button {
     color: white;
 }
 
+.offline-indicator.adaptive {
+    background: linear-gradient(45deg, #ff9800, #f57c00);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
 .offline-indicator.syncing {
     background: #2196f3;
     color: white;
