@@ -501,31 +501,42 @@ function showLogin() {
 function showDashboard() {
     hideAllSections();
     document.getElementById('dashboard-section').classList.add('active');
-    
-    // Mostrar información del usuario logueado en el dropdown
+    updateAllUserDropdowns();
+}
+
+function updateAllUserDropdowns() {
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (user) {
-        document.getElementById('user-display-name').textContent = user.nombre;
-        document.getElementById('dropdown-rol').textContent = user.rol.toUpperCase();
+        document.querySelectorAll('.user-display-name').forEach(el => {
+            el.textContent = user.nombre;
+        });
+        document.querySelectorAll('.dropdown-rol').forEach(el => {
+            el.textContent = user.rol.toUpperCase();
+        });
     }
 }
 
-function toggleUserDropdown() {
-    const dropdown = document.getElementById('user-dropdown');
-    dropdown.classList.toggle('active');
+function toggleUserDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId || 'user-dropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('active');
+    }
 }
 
 // Cerrar dropdown al hacer clic fuera
 document.addEventListener('click', function(event) {
-    const dropdown = document.getElementById('user-dropdown');
-    if (dropdown && !dropdown.contains(event.target)) {
-        dropdown.classList.remove('active');
-    }
+    const dropdowns = document.querySelectorAll('.user-dropdown');
+    dropdowns.forEach(dropdown => {
+        if (dropdown && !dropdown.contains(event.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
 });
 
 function showAsistenciaModule() {
     hideAllSections();
     document.getElementById('asistencia-module-section').classList.add('active');
+    updateAllUserDropdowns();
     loadEventos();
 }
 
@@ -536,6 +547,7 @@ function showBibliotecaModule() {
 function showGestionUsuarios() {
     hideAllSections();
     document.getElementById('gestion-usuarios-section').classList.add('active');
+    updateAllUserDropdowns();
 }
 
 function showRegistroDocentes() {
@@ -546,6 +558,7 @@ function showRegistroDocentes() {
 function showCargaMasiva() {
     hideAllSections();
     document.getElementById('carga-masiva-section').classList.add('active');
+    updateAllUserDropdowns();
     mostrarCargaNueva();
 }
 
@@ -852,6 +865,7 @@ async function procesarExcelInterno(file, resultadoDiv, estudiantesAnteriores = 
 function showCreateEvent() {
     hideAllSections();
     document.getElementById('create-event-section').classList.add('active');
+    updateAllUserDropdowns();
 }
 
 function showScanner(eventoId, eventoNombre) {
@@ -859,6 +873,7 @@ function showScanner(eventoId, eventoNombre) {
     currentEventId = eventoId;
     document.getElementById('evento-title').textContent = eventoNombre;
     document.getElementById('scanner-section').classList.add('active');
+    updateAllUserDropdowns();
     
     validarEventoActivo(eventoId).then(esValido => {
         if (esValido) {
@@ -883,6 +898,7 @@ function showEstudiantes() {
     }
     hideAllSections();
     document.getElementById('estudiantes-section').classList.add('active');
+    updateAllUserDropdowns();
     loadEstudiantes();
 }
 
@@ -1585,6 +1601,7 @@ function toggleSubAccordion(element) {
 function showCrearEspecialidad() {
     hideAllSections();
     document.getElementById('crear-especialidad-section').classList.add('active');
+    updateAllUserDropdowns();
 }
 
 function crearEspecialidadAnio() {
@@ -1614,6 +1631,7 @@ function showListaEstudiantes() {
 function showAgregarEstudiante() {
     hideAllSections();
     document.getElementById('agregar-estudiante-section').classList.add('active');
+    updateAllUserDropdowns();
     document.getElementById('form-especialidad').textContent = currentEspecialidad;
     document.getElementById('form-anio').textContent = currentAnio;
 }
@@ -1671,6 +1689,7 @@ async function generarQRsGrupoDirecto(especialidad, anio) {
     
     hideAllSections();
     document.getElementById('generar-qr-section').classList.add('active');
+    updateAllUserDropdowns();
     
     const container = document.getElementById('qr-container');
     container.innerHTML = '<p style="color: white;">Generando QRs...</p>';
@@ -1859,6 +1878,7 @@ async function verListaAsistencias(eventoId, eventoNombre) {
     
     hideAllSections();
     document.getElementById('ver-asistencias-section').classList.add('active');
+    updateAllUserDropdowns();
     document.getElementById('asistencias-evento-title').textContent = `Asistencias - ${eventoNombre}`;
     
     const listEl = document.getElementById('asistencias-completas-list');
@@ -2364,6 +2384,7 @@ async function registrarDocente() {
 function showRegistroUsuarios() {
     hideAllSections();
     document.getElementById('registro-usuarios-section').classList.add('active');
+    updateAllUserDropdowns();
 }
 
 function registrarUsuario() {

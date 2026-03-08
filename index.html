@@ -65,9 +65,19 @@
         <div id="asistencia-module-section" class="section hidden">
             <div class="header">
                 <h1>Módulo de Asistencia</h1>
-                <div>
+                <div class="header-right">
                     <button onclick="showEstudiantes()" class="btn-secondary" style="margin-right: 10px;">👥 Estudiantes</button>
-                    <button onclick="showDashboard()" class="btn-secondary">← Volver</button>
+                    <button onclick="showDashboard()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-asistencia">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-asistencia')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="container">
@@ -81,7 +91,19 @@
         <div id="create-event-section" class="section hidden">
             <div class="header">
                 <h1>Crear Evento</h1>
-                <button onclick="showAsistenciaModule()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="showAsistenciaModule()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-crear">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-crear')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="container">
                 <div class="card">
@@ -103,9 +125,19 @@
         <div id="scanner-section" class="section hidden">
             <div class="header">
                 <h1 id="evento-title"></h1>
-                <div>
-                    <button onclick="forceSyncOffline()" class="btn-sync" title="Sincronizar asistencias offline">🔄 Sync</button>
-                    <button onclick="showAsistenciaModule()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="forceSyncOffline()" class="btn-sync" title="Sincronizar asistencias offline" style="margin-right: 10px;">🔄 Sync</button>
+                    <button onclick="showAsistenciaModule()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-scanner">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-scanner')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -126,7 +158,19 @@
         <div id="estudiantes-section" class="section hidden">
             <div class="header">
                 <h1>Gestión de Estudiantes</h1>
-                <button onclick="showDashboard()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="showDashboard()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-estudiantes">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-estudiantes')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="container">
                 <button onclick="showCrearEspecialidad()" class="btn-create">+ Nueva Especialidad/Año</button>
@@ -138,7 +182,19 @@
         <div id="crear-especialidad-section" class="section hidden">
             <div class="header">
                 <h1>Nueva Especialidad y Año</h1>
-                <button onclick="showEstudiantes()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="showEstudiantes()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-especialidad">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-especialidad')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="container">
                 <div class="card">
@@ -169,7 +225,19 @@
         <div id="agregar-estudiante-section" class="section hidden">
             <div class="header">
                 <h1>Agregar Estudiante</h1>
-                <button onclick="showListaEstudiantes()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="showListaEstudiantes()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-agregar">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-agregar')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="container">
                 <div class="card">
@@ -191,7 +259,19 @@
         <div id="generar-qr-section" class="section hidden">
             <div class="header">
                 <h1>Códigos QR Generados</h1>
-                <button onclick="showListaEstudiantes()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="showListaEstudiantes()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-qr">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-qr')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="container">
                 <button class="btn-success" onclick="downloadAllQRs()">📦 Descargar ZIP</button>
@@ -203,10 +283,20 @@
         <div id="ver-asistencias-section" class="section hidden">
             <div class="header">
                 <h1 id="asistencias-evento-title">Lista de Asistencias</h1>
-                <div>
+                <div class="header-right">
                     <button onclick="auditarAsistencias()" class="btn-secondary" style="margin-right: 10px;">📊 Auditar Registros</button>
                     <button onclick="exportarAsistenciasExcel()" class="btn-success" style="margin-right: 10px;">📊 Exportar Excel</button>
-                    <button onclick="showAsistenciaModule()" class="btn-secondary">← Volver</button>
+                    <button onclick="showAsistenciaModule()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-asistencias">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-asistencias')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="container">
@@ -218,7 +308,19 @@
         <div id="gestion-usuarios-section" class="section hidden">
             <div class="header">
                 <h1>Gestión de Usuarios</h1>
-                <button onclick="showDashboard()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="showDashboard()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-gestion">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-gestion')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="container">
                 <div class="modules-grid">
@@ -241,7 +343,19 @@
         <div id="registro-usuarios-section" class="section hidden">
             <div class="header">
                 <h1>Registro de Usuarios</h1>
-                <button onclick="showGestionUsuarios()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="showGestionUsuarios()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-registro">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-registro')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="container">
                 <div class="card">
@@ -268,7 +382,19 @@
         <div id="carga-masiva-section" class="section hidden">
             <div class="header">
                 <h1>Carga Masiva de Estudiantes</h1>
-                <button onclick="showGestionUsuarios()" class="btn-secondary">← Volver</button>
+                <div class="header-right">
+                    <button onclick="showGestionUsuarios()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-carga">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-carga')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="container">
                 <div class="card">
@@ -324,7 +450,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="js/tursodb.js?v=2026030824"></script>
+    <script src="js/tursodb.js?v=2026030825"></script>
     <script>
         // Máscara para formato 24 horas en campos de hora
         document.addEventListener('DOMContentLoaded', function() {
@@ -363,6 +489,6 @@
             });
         });
     </script>
-    <script src="js/app.js?v=2026030824"></script>
+    <script src="js/app.js?v=2026030825"></script>
 </body>
 </html>
