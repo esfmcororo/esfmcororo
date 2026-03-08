@@ -287,7 +287,6 @@ async function mostrarAuditoria() {
     console.log('Iniciando auditoría completa...');
     
     const auditoria = await auditarAsistencias(currentEventoId);
-    await compararAsistenciasVsEstudiantes(currentEventoId);
     
     if (auditoria) {
         let mensaje = `📊 AUDITORÍA DEL EVENTO\n\n`;
@@ -300,11 +299,69 @@ async function mostrarAuditoria() {
         
         if (auditoria.duplicados > 0) {
             mensaje += `\n⚠️ DUPLICADOS DETECTADOS: ${auditoria.duplicados}\n`;
+            mensaje += `\n¿Quieres eliminar los duplicados automáticamente?`;
+            
+            if (confirm(mensaje)) {
+                await limpiarDuplicados(currentEventoId);
+            }
+        } else {
+            mensaje += `\n✅ No se encontraron duplicados`;
+            alert(mensaje);
         }
         
-        mensaje += `\n🔍 Revisa la consola (F12) para análisis detallado`;
+        console.log('🔍 Revisa la consola para análisis detallado');
+    }
+}
+
+// Limpiar duplicados de un evento
+async function limpiarDuplicados(eventoId) {
+    try {
+        console.log('Iniciando limpieza de duplicados...');
         
-        alert(mensaje);
+        // Obtener duplicados con IDs específicos
+        const result = await tursodb.query(`
+            SELECT 
+                a.id as asistencia_id,
+                a.estudiante_id,
+                a.timestamp,
+                e.codigo_unico,
+                e.nombre,
+                e.apellido_paterno,
+                ROW_NUMBER() OVER (PARTITION BY a.estudiante_id ORDER BY a.timestamp) as row_num
+            FROM asistencias a
+            JOIN estudiantes e ON a.estudiante_id = e.id
+            WHERE a.evento_id = ?
+            ORDER BY e.codigo_unico, a.timestamp
+        `, [eventoId]);
+        
+        if (result.rows) {
+            // Identificar duplicados (row_num > 1)
+            const duplicados = result.rows.filter(row => row.row_num > 1);
+            
+            if (duplicados.length > 0) {
+                console.log(`Eliminando ${duplicados.length} registros duplicados...`);
+                
+                // Eliminar cada duplicado
+                for (const dup of duplicados) {
+                    await tursodb.query('DELETE FROM asistencias WHERE id = ?', [dup.asistencia_id]);
+                    console.log(`Eliminado: ${dup.codigo_unico} - ${dup.nombre} ${dup.apellido_paterno} (${dup.timestamp})`);
+                }
+                
+                alert(`✅ Limpieza completada\n\nEliminados ${duplicados.length} registros duplicados\n\nRecarga la lista para ver los cambios.`);
+                
+                // Recargar la lista
+                setTimeout(() => {
+                    verListaAsistencias(eventoId, currentEventoNombre);
+                }, 1000);
+                
+            } else {
+                alert('No se encontraron duplicados para eliminar.');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error limpiando duplicados:', error);
+        alert('Error al limpiar duplicados: ' + error.message);
     }
 }
 
