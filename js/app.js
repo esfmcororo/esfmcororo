@@ -187,6 +187,127 @@ async function forceSyncOffline() {
     await syncOfflineQueue();
 }
 
+// ========== FUNCIONES DE AUDITORÍA ==========
+
+// Auditar asistencias de un evento
+async function auditarAsistencias(eventoId) {
+    try {
+        const result = await tursodb.query(`
+            SELECT 
+                a.id as asistencia_id,
+                a.timestamp,
+                e.codigo_unico,
+                e.nombre,
+                e.apellido_paterno,
+                e.apellido_materno,
+                e.especialidad,
+                e.anio_formacion,
+                COUNT(*) OVER (PARTITION BY e.id) as veces_registrado
+            FROM asistencias a
+            JOIN estudiantes e ON a.estudiante_id = e.id
+            WHERE a.evento_id = ?
+            ORDER BY e.codigo_unico, a.timestamp
+        `, [eventoId]);
+        
+        console.log('=== AUDITORÍA DE ASISTENCIAS ===');
+        console.log(`Total asistencias: ${result.rows?.length || 0}`);
+        
+        if (result.rows) {
+            // Agrupar por especialidad y año
+            const grupos = {};
+            const duplicados = [];
+            
+            result.rows.forEach(row => {
+                const key = `${row.especialidad} - ${row.anio_formacion}`;
+                if (!grupos[key]) grupos[key] = [];
+                grupos[key].push(row);
+                
+                if (row.veces_registrado > 1) {
+                    duplicados.push(row);
+                }
+            });
+            
+            console.log('\n--- POR ESPECIALIDAD Y AÑO ---');
+            Object.keys(grupos).forEach(key => {
+                console.log(`${key}: ${grupos[key].length} asistencias`);
+            });
+            
+            if (duplicados.length > 0) {
+                console.log('\n--- DUPLICADOS DETECTADOS ---');
+                duplicados.forEach(dup => {
+                    console.log(`${dup.codigo_unico} - ${dup.nombre} ${dup.apellido_paterno}: ${dup.veces_registrado} veces`);
+                });
+            }
+            
+            return {
+                total: result.rows.length,
+                grupos,
+                duplicados: duplicados.length
+            };
+        }
+        
+    } catch (error) {
+        console.error('Error en auditoría:', error);
+    }
+}
+
+// Contar estudiantes reales por especialidad y año
+async function contarEstudiantesPorGrupo() {
+    try {
+        const result = await tursodb.query(`
+            SELECT 
+                especialidad,
+                anio_formacion,
+                COUNT(*) as total_estudiantes
+            FROM estudiantes 
+            GROUP BY especialidad, anio_formacion
+            ORDER BY especialidad, anio_formacion
+        `);
+        
+        console.log('=== ESTUDIANTES REGISTRADOS EN BD ===');
+        if (result.rows) {
+            result.rows.forEach(row => {
+                console.log(`${row.especialidad} - ${row.anio_formacion}: ${row.total_estudiantes} estudiantes`);
+            });
+        }
+        
+        return result.rows;
+    } catch (error) {
+        console.error('Error contando estudiantes:', error);
+    }
+}
+
+// Función para mostrar auditoría en interfaz
+async function mostrarAuditoria() {
+    if (!currentEventoId) {
+        alert('Abre primero la lista de asistencias de un evento');
+        return;
+    }
+    
+    console.log('Iniciando auditoría completa...');
+    
+    const auditoria = await auditarAsistencias(currentEventoId);
+    await compararAsistenciasVsEstudiantes(currentEventoId);
+    
+    if (auditoria) {
+        let mensaje = `📊 AUDITORÍA DEL EVENTO\n\n`;
+        mensaje += `Total asistencias: ${auditoria.total}\n\n`;
+        
+        mensaje += `Por especialidad y año:\n`;
+        Object.keys(auditoria.grupos).forEach(key => {
+            mensaje += `• ${key}: ${auditoria.grupos[key].length}\n`;
+        });
+        
+        if (auditoria.duplicados > 0) {
+            mensaje += `\n⚠️ DUPLICADOS DETECTADOS: ${auditoria.duplicados}\n`;
+        }
+        
+        mensaje += `\n🔍 Revisa la consola (F12) para análisis detallado`;
+        
+        alert(mensaje);
+    }
+}
+
 // ========== AUTENTICACIÓN CON SUPABASE AUTH ==========
 
 async function login() {
