@@ -102,6 +102,16 @@ function updateOfflineIndicator() {
 
 // Agregar asistencia a cola offline
 function addToOfflineQueue(estudianteId, eventoId, timestamp = null) {
+    // VERIFICAR DUPLICADOS EN COLA OFFLINE ANTES DE AGREGAR
+    const yaExisteEnCola = offlineQueue.find(a => 
+        a.estudiante_id === estudianteId && a.evento_id === eventoId
+    );
+    
+    if (yaExisteEnCola) {
+        console.log('Asistencia ya existe en cola offline, no se agrega duplicado');
+        return false; // No se agregó
+    }
+    
     const asistencia = {
         id: Date.now() + Math.random(), // ID único temporal
         estudiante_id: estudianteId,
@@ -113,6 +123,7 @@ function addToOfflineQueue(estudianteId, eventoId, timestamp = null) {
     offlineQueue.push(asistencia);
     saveOfflineQueue();
     console.log('Asistencia agregada a cola offline:', asistencia);
+    return true; // Se agregó correctamente
 }
 
 // Sincronizar cola offline con servidor
@@ -332,45 +343,44 @@ async function mostrarAuditoria() {
     }
 }
 
-// Limpiar TODOS los duplicados de un evento de una vez
-async function limpiarTodosDuplicados() {
-    if (!currentEventoId) {
-        alert('Abre primero la lista de asistencias de un evento');
-        return;
-    }
-    
-    const confirmacion = confirm('⚠️ LIMPIEZA MASIVA DE DUPLICADOS\n\nEsto eliminará TODOS los registros duplicados del evento.\nSolo se mantendrá el primer registro de cada estudiante.\n\n¿Continuar?');
+// FUNCIÓN DE EMERGENCIA: Limpiar TODOS los duplicados de TODOS los eventos
+async function emergenciaLimpiarTodo() {
+    const confirmacion = confirm('⚠️ FUNCIÓN DE EMERGENCIA\n\nEsto eliminará TODOS los duplicados de TODOS los eventos del sistema.\nSolo mantendrá 1 registro por estudiante por evento.\n\n¿Estás SEGURO de continuar?');
     
     if (!confirmacion) return;
     
+    const confirmacion2 = confirm('⚠️ Última confirmación\n\nEsta acción NO se puede deshacer.\n¿Continuar con la limpieza de emergencia?');
+    
+    if (!confirmacion2) return;
+    
     try {
-        console.log('Iniciando limpieza masiva de duplicados...');
+        console.log('INICIANDO LIMPIEZA DE EMERGENCIA...');
         
-        // Obtener TODOS los duplicados
+        // Obtener TODOS los duplicados de TODOS los eventos
         const result = await tursodb.query(`
             SELECT 
                 a.id as asistencia_id,
                 a.estudiante_id,
+                a.evento_id,
                 a.timestamp,
                 e.codigo_unico,
                 e.nombre,
                 e.apellido_paterno,
-                ROW_NUMBER() OVER (PARTITION BY a.estudiante_id ORDER BY a.timestamp) as row_num
+                ROW_NUMBER() OVER (PARTITION BY a.estudiante_id, a.evento_id ORDER BY a.timestamp) as row_num
             FROM asistencias a
             JOIN estudiantes e ON a.estudiante_id = e.id
-            WHERE a.evento_id = ?
-            ORDER BY e.codigo_unico, a.timestamp
-        `, [currentEventoId]);
+            ORDER BY a.evento_id, e.codigo_unico, a.timestamp
+        `);
         
         if (result.rows) {
             // Identificar TODOS los duplicados (row_num > 1)
             const duplicados = result.rows.filter(row => row.row_num > 1);
             
             if (duplicados.length > 0) {
-                console.log(`Eliminando ${duplicados.length} registros duplicados...`);
+                console.log(`ELIMINANDO ${duplicados.length} registros duplicados de TODOS los eventos...`);
                 
-                // Eliminar en lotes para evitar timeout
-                const batchSize = 20;
+                // Eliminar en lotes grandes para emergencia
+                const batchSize = 50;
                 let eliminados = 0;
                 
                 for (let i = 0; i < duplicados.length; i += batchSize) {
@@ -379,28 +389,33 @@ async function limpiarTodosDuplicados() {
                     for (const dup of batch) {
                         await tursodb.query('DELETE FROM asistencias WHERE id = ?', [dup.asistencia_id]);
                         eliminados++;
-                        console.log(`Eliminado ${eliminados}/${duplicados.length}: ${dup.codigo_unico}`);
+                        
+                        if (eliminados % 10 === 0) {
+                            console.log(`EMERGENCIA: Eliminados ${eliminados}/${duplicados.length}`);
+                        }
                     }
                     
-                    // Pausa pequeña entre lotes
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Pausa mínima entre lotes
+                    await new Promise(resolve => setTimeout(resolve, 50));
                 }
                 
-                alert(`✅ Limpieza masiva completada\n\n• Eliminados: ${eliminados} registros duplicados\n• Restantes: ${result.rows.length - eliminados} asistencias únicas\n\nRecargando lista...`);
+                alert(`✅ LIMPIEZA DE EMERGENCIA COMPLETADA\n\n• Duplicados eliminados: ${eliminados}\n• Registros únicos mantenidos: ${result.rows.length - eliminados}\n\nEl sistema ahora está limpio.`);
                 
-                // Recargar la lista
-                setTimeout(() => {
-                    verListaAsistencias(currentEventoId, currentEventoNombre);
-                }, 1000);
+                // Recargar la lista actual
+                if (currentEventoId) {
+                    setTimeout(() => {
+                        verListaAsistencias(currentEventoId, currentEventoNombre);
+                    }, 1000);
+                }
                 
             } else {
-                alert('✅ No se encontraron duplicados para eliminar.');
+                alert('✅ No se encontraron duplicados en el sistema.');
             }
         }
         
     } catch (error) {
-        console.error('Error en limpieza masiva:', error);
-        alert('Error en limpieza masiva: ' + error.message);
+        console.error('Error en limpieza de emergencia:', error);
+        alert('Error en limpieza de emergencia: ' + error.message);
     }
 }
 
@@ -1231,11 +1246,15 @@ async function onScanSuccess(codigoUnico) {
             }
         } catch (networkError) {
             // Sin conexión - guardar en cola offline
-            addToOfflineQueue(estudiante.id, currentEventId);
-            showMessage(`📱 ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Guardado offline`, 'success');
+            const agregado = addToOfflineQueue(estudiante.id, currentEventId);
             
-            // Mostrar en lista local inmediatamente
-            addToLocalAsistenciasList(estudiante);
+            if (agregado) {
+                showMessage(`📱 ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Guardado offline`, 'success');
+                // Mostrar en lista local inmediatamente
+                addToLocalAsistenciasList(estudiante);
+            } else {
+                showMessage('Asistencia ya registrada (en cola offline)', 'warning');
+            }
         }
         
         // Reiniciar escáner después de 2 segundos
