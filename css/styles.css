@@ -44,6 +44,71 @@ body {
     z-index: 100;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-dropdown {
+    position: relative;
+}
+
+.user-dropdown-btn {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #333;
+    transition: all 0.3s;
+}
+
+.user-dropdown-btn:hover {
+    background: #e9ecef;
+    border-color: #667eea;
+}
+
+.user-dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 5px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 200px;
+    z-index: 1000;
+}
+
+.user-dropdown.active .user-dropdown-content {
+    display: block;
+}
+
+.user-dropdown-content p {
+    margin: 0;
+    padding: 10px 15px;
+    color: #333;
+    font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.user-dropdown-content p:last-child {
+    border-bottom: none;
+}
+
+.user-dropdown-content strong {
+    color: #667eea;
+    display: block;
+    margin-bottom: 3px;
+}
+
 .container {
     max-width: 900px;
     margin: 30px auto;
@@ -733,45 +798,5 @@ button {
 }
 /* Información del usuario logueado */
 .user-info {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1000;
-    border-left: 4px solid #667eea;
-}
-
-.user-info h4 {
-    margin: 0 0 5px 0;
-    color: #333;
-    font-size: 14px;
-}
-
-.user-info p {
-    margin: 0;
-    color: #666;
-    font-size: 12px;
-}
-
-.user-role {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: bold;
-    text-transform: uppercase;
-    margin-top: 5px;
-}
-
-.user-role.admin {
-    background: #dc3545;
-    color: white;
-}
-
-.user-role.usuario {
-    background: #28a745;
-    color: white;
+    display: none;
 }

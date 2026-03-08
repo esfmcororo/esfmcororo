@@ -502,27 +502,28 @@ function showDashboard() {
     hideAllSections();
     document.getElementById('dashboard-section').classList.add('active');
     
-    // Mostrar información del usuario logueado
+    // Mostrar información del usuario logueado en el dropdown
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (user) {
-        const userInfoHtml = `
-            <h4>${user.nombre}</h4>
-            <p>CI: ${user.ci}</p>
-            <span class="user-role ${user.rol}">${user.rol}</span>
-        `;
-        
-        // Crear o actualizar el contenedor de información del usuario
-        let userInfoDiv = document.getElementById('user-info-container');
-        if (!userInfoDiv) {
-            userInfoDiv = document.createElement('div');
-            userInfoDiv.id = 'user-info-container';
-            userInfoDiv.className = 'user-info';
-            document.body.appendChild(userInfoDiv);
-        }
-        userInfoDiv.innerHTML = userInfoHtml;
-        userInfoDiv.style.display = 'block';
+        document.getElementById('user-display-name').textContent = user.nombre;
+        document.getElementById('dropdown-nombre').textContent = user.nombre;
+        document.getElementById('dropdown-ci').textContent = user.ci;
+        document.getElementById('dropdown-rol').textContent = user.rol.toUpperCase();
     }
 }
+
+function toggleUserDropdown() {
+    const dropdown = document.getElementById('user-dropdown');
+    dropdown.classList.toggle('active');
+}
+
+// Cerrar dropdown al hacer clic fuera
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('user-dropdown');
+    if (dropdown && !dropdown.contains(event.target)) {
+        dropdown.classList.remove('active');
+    }
+});
 
 function showAsistenciaModule() {
     hideAllSections();
@@ -894,12 +895,6 @@ function showAgregarEstudiante() {
 
 function hideAllSections() {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    
-    // Ocultar información del usuario cuando no está en dashboard
-    const userInfoDiv = document.getElementById('user-info-container');
-    if (userInfoDiv) {
-        userInfoDiv.style.display = 'none';
-    }
     
     // Detener temporizador si existe
     if (eventoTimer) {
