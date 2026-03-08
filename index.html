@@ -29,12 +29,12 @@
                 <h1>SFEM "Simón Bolívar" CORORO</h1>
                 <div class="header-right">
                     <div class="user-dropdown" id="user-dropdown">
-                        <button class="user-dropdown-btn" onclick="toggleUserDropdown()">
-                            <span id="user-display-name"></span>
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown')">
+                            <span class="user-display-name"></span>
                             <span>▼</span>
                         </button>
                         <div class="user-dropdown-content">
-                            <p><strong>Rol:</strong> <span id="dropdown-rol"></span></p>
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
                             <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
                         </div>
                     </div>
@@ -450,7 +450,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="js/tursodb.js?v=2026030825"></script>
+    <script src="js/tursodb.js?v=2026030826"></script>
     <script>
         // Máscara para formato 24 horas en campos de hora
         document.addEventListener('DOMContentLoaded', function() {
@@ -489,6 +489,6 @@
             });
         });
     </script>
-    <script src="js/app.js?v=2026030825"></script>
+    <script src="js/app.js?v=2026030826"></script>
 </body>
 </html>
