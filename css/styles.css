@@ -367,6 +367,14 @@ button {
     .header h1 {
         font-size: 16px;
     }
+    .header button {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+    .user-dropdown-btn {
+        font-size: 12px !important;
+        padding: 6px 10px !important;
+    }
 }
 
 .accordion {
