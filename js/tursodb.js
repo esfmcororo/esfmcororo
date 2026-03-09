@@ -1,8 +1,25 @@
-// ADAPTADOR TURSO - Base de datos en la nube
+// ADAPTADOR TURSO CON FAILOVER AUTOMÁTICO
 class TursoDB {
     constructor() {
-        this.dbUrl = 'https://sfemcororo-sfemcororo.aws-us-east-1.turso.io';
-        this.authToken = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiJkYjIyYTE4ZC1kYTUxLTQwMTUtOTcyYS05YWUxODY3NGEyNmQiLCJpYXQiOjE3NzMwMDQ0MzQsInJpZCI6IjNlMzZmY2I1LTZiN2MtNGMxNi05MjIyLWNiYzJkMmE3NjgzNSJ9.Xp_y2qDRZBR2Dk5DxxmOiPOC3h-50JvEyrWMoUMeN3ou2A6qQfx57NjaOlJ5nBGPHu-JxAEwIUPhpnvwuZYRAw';
+        // BD Principal
+        this.primaryDb = {
+            url: 'https://sfemcororo-sfemcororo.aws-us-east-1.turso.io',
+            token: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiJkYjIyYTE4ZC1kYTUxLTQwMTUtOTcyYS05YWUxODY3NGEyNmQiLCJpYXQiOjE3NzMwMDQ0MzQsInJpZCI6IjNlMzZmY2I1LTZiN2MtNGMxNi05MjIyLWNiYzJkMmE3NjgzNSJ9.Xp_y2qDRZBR2Dk5DxxmOiPOC3h-50JvEyrWMoUMeN3ou2A6qQfx57NjaOlJ5nBGPHu-JxAEwIUPhpnvwuZYRAw'
+        };
+        
+        // BD Respaldo (crear segunda BD en Turso y poner credenciales aquí)
+        this.backupDb = {
+            url: 'https://sfemcororo-backup-sfemcororo.aws-us-east-1.turso.io', // CAMBIAR por tu BD backup
+            token: 'TU_TOKEN_BACKUP_AQUI' // CAMBIAR por token de BD backup
+        };
+        
+        this.currentDb = 'primary';
+        this.failoverAttempts = 0;
+        this.maxFailoverAttempts = 3;
+        this.syncQueue = [];
+        
+        this.dbUrl = this.primaryDb.url;
+        this.authToken = this.primaryDb.token;
         
         this.auth = {
             signInWithPassword: async ({ email, password }) => {
@@ -33,6 +50,48 @@ class TursoDB {
         };
     }
     
+    // Cambiar a BD de respaldo
+    switchToBackup() {
+        console.warn('🔄 Cambiando a BD de respaldo...');
+        this.currentDb = 'backup';
+        this.dbUrl = this.backupDb.url;
+        this.authToken = this.backupDb.token;
+        this.showFailoverNotification('Usando servidor de respaldo');
+    }
+    
+    // Volver a BD principal
+    switchToPrimary() {
+        console.log('✅ Restaurando BD principal...');
+        this.currentDb = 'primary';
+        this.dbUrl = this.primaryDb.url;
+        this.authToken = this.primaryDb.token;
+        this.failoverAttempts = 0;
+        this.showFailoverNotification('Servidor principal restaurado', 'success');
+    }
+    
+    // Mostrar notificación de failover
+    showFailoverNotification(message, type = 'warning') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 70px;
+            right: 10px;
+            padding: 12px 20px;
+            background: ${type === 'success' ? '#28a745' : '#ff9800'};
+            color: white;
+            border-radius: 6px;
+            font-weight: bold;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        notification.textContent = `⚠️ ${message}`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
+    }
+    
     async query(sql, params = []) {
         try {
             const response = await fetch(`${this.dbUrl}/v2/pipeline`, {
@@ -52,7 +111,23 @@ class TursoDB {
                 })
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
             const data = await response.json();
+            
+            // Si estábamos en backup y la query funcionó, intentar volver a primary
+            if (this.currentDb === 'backup') {
+                this.tryRestorePrimary();
+            }
+            
+            // Sincronizar a la otra BD si es escritura
+            if (sql.trim().toUpperCase().startsWith('INSERT') || 
+                sql.trim().toUpperCase().startsWith('UPDATE') || 
+                sql.trim().toUpperCase().startsWith('DELETE')) {
+                this.syncToOtherDb(sql, params);
+            }
             
             if (data.results && data.results[0] && data.results[0].response) {
                 const result = data.results[0].response.result;
@@ -70,8 +145,80 @@ class TursoDB {
             
             return { rows: [], error: null };
         } catch (error) {
-            console.error('Turso query error:', error);
+            console.error(`Error en BD ${this.currentDb}:`, error);
+            
+            // Si falla la BD principal, cambiar a backup
+            if (this.currentDb === 'primary' && this.failoverAttempts < this.maxFailoverAttempts) {
+                this.failoverAttempts++;
+                this.switchToBackup();
+                return this.query(sql, params); // Reintentar con backup
+            }
+            
             return { rows: [], error };
+        }
+    }
+    
+    // Sincronizar operación a la otra BD
+    async syncToOtherDb(sql, params) {
+        const targetDb = this.currentDb === 'primary' ? this.backupDb : this.primaryDb;
+        
+        try {
+            await fetch(`${targetDb.url}/v2/pipeline`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${targetDb.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    requests: [{
+                        type: 'execute',
+                        stmt: {
+                            sql: sql,
+                            args: params.map(p => ({ type: 'text', value: String(p) }))
+                        }
+                    }]
+                })
+            });
+            console.log(`✅ Sincronizado a BD ${this.currentDb === 'primary' ? 'backup' : 'primary'}`);
+        } catch (error) {
+            console.warn(`⚠️ No se pudo sincronizar a BD ${this.currentDb === 'primary' ? 'backup' : 'primary'}`);
+            // Guardar en cola para sincronizar después
+            this.syncQueue.push({ sql, params });
+        }
+    }
+    
+    // Intentar restaurar BD principal
+    async tryRestorePrimary() {
+        try {
+            const testResponse = await fetch(`${this.primaryDb.url}/v2/pipeline`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.primaryDb.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    requests: [{
+                        type: 'execute',
+                        stmt: { sql: 'SELECT 1', args: [] }
+                    }]
+                })
+            });
+            
+            if (testResponse.ok) {
+                this.switchToPrimary();
+                // Sincronizar cola pendiente
+                this.processSyncQueue();
+            }
+        } catch (error) {
+            // Primary aún no disponible
+        }
+    }
+    
+    // Procesar cola de sincronización
+    async processSyncQueue() {
+        while (this.syncQueue.length > 0) {
+            const { sql, params } = this.syncQueue.shift();
+            await this.syncToOtherDb(sql, params);
         }
     }
     
