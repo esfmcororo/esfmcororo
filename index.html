@@ -577,12 +577,21 @@
             <div class="container">
                 <div class="card">
                     <input type="hidden" id="edit-usuario-id">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">CI/DNI:</label>
                     <input type="text" id="edit-usuario-ci" placeholder="CI/DNI">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Nombre Completo:</label>
                     <input type="text" id="edit-usuario-nombre" placeholder="Nombre completo">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Email:</label>
                     <input type="email" id="edit-usuario-email" placeholder="Email">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Nueva Contraseña (dejar vacío para no cambiar):</label>
+                    <input type="password" id="edit-usuario-password" placeholder="Nueva contraseña (opcional)">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Celular:</label>
                     <input type="tel" id="edit-usuario-celular" placeholder="Celular">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Especialidad:</label>
                     <input type="text" id="edit-usuario-especialidad" placeholder="Especialidad">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Código Único (RDA):</label>
                     <input type="text" id="edit-usuario-codigo" placeholder="Código Único (RDA)">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Rol:</label>
                     <select id="edit-usuario-rol">
                         <option value="admin">Administrador</option>
                         <option value="usuario">Usuario</option>
@@ -598,7 +607,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="js/tursodb.js?v=2026030836"></script>
+    <script src="js/tursodb.js?v=2026030837"></script>
     <script>
         // Máscara para formato 24 horas en campos de hora
         document.addEventListener('DOMContentLoaded', function() {
@@ -637,6 +646,6 @@
             });
         });
     </script>
-    <script src="js/app.js?v=2026030836"></script>
+    <script src="js/app.js?v=2026030837"></script>
 </body>
 </html>

@@ -2473,6 +2473,7 @@ async function actualizarUsuarioTurso() {
     const ci = document.getElementById('edit-usuario-ci').value;
     const nombre = document.getElementById('edit-usuario-nombre').value;
     const email = document.getElementById('edit-usuario-email').value;
+    const password = document.getElementById('edit-usuario-password').value;
     const celular = document.getElementById('edit-usuario-celular').value;
     const especialidad = document.getElementById('edit-usuario-especialidad').value;
     const codigoUnico = document.getElementById('edit-usuario-codigo').value;
@@ -2484,11 +2485,21 @@ async function actualizarUsuarioTurso() {
     }
 
     try {
-        await tursodb.query(`
-            UPDATE usuarios 
-            SET ci = ?, nombre = ?, email = ?, celular = ?, especialidad = ?, codigo_unico = ?, rol = ?
-            WHERE id = ?
-        `, [ci, nombre, email, celular, especialidad, codigoUnico, rol, usuarioId]);
+        // Si hay contraseña, actualizar con contraseña
+        if (password && password.trim() !== '') {
+            await tursodb.query(`
+                UPDATE usuarios 
+                SET ci = ?, nombre = ?, email = ?, password = ?, celular = ?, especialidad = ?, codigo_unico = ?, rol = ?
+                WHERE id = ?
+            `, [ci, nombre, email, password, celular, especialidad, codigoUnico, rol, usuarioId]);
+        } else {
+            // Sin contraseña, actualizar sin cambiar contraseña
+            await tursodb.query(`
+                UPDATE usuarios 
+                SET ci = ?, nombre = ?, email = ?, celular = ?, especialidad = ?, codigo_unico = ?, rol = ?
+                WHERE id = ?
+            `, [ci, nombre, email, celular, especialidad, codigoUnico, rol, usuarioId]);
+        }
 
         alert('✓ Usuario actualizado correctamente');
         showListaUsuarios();
