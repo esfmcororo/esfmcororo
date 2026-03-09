@@ -2080,17 +2080,24 @@ async function verListaAsistencias(eventoId, eventoNombre) {
 // Función para limpiar duplicados de un evento específico
 async function limpiarDuplicadosEvento(eventoId) {
     try {
+        // Mantener solo el registro con el timestamp más temprano para cada estudiante
         const result = await tursodb.query(`
             DELETE FROM asistencias 
-            WHERE id NOT IN (
-                SELECT MIN(id) 
-                FROM asistencias 
-                WHERE evento_id = ? 
-                GROUP BY estudiante_id
-            ) AND evento_id = ?
+            WHERE id IN (
+                SELECT a1.id
+                FROM asistencias a1
+                INNER JOIN (
+                    SELECT estudiante_id, MIN(timestamp) as min_timestamp
+                    FROM asistencias
+                    WHERE evento_id = ?
+                    GROUP BY estudiante_id
+                    HAVING COUNT(*) > 1
+                ) a2 ON a1.estudiante_id = a2.estudiante_id
+                WHERE a1.evento_id = ? AND a1.timestamp > a2.min_timestamp
+            )
         `, [eventoId, eventoId]);
         
-        console.log(`Duplicados eliminados del evento ${eventoId}`);
+        console.log(`Duplicados eliminados del evento ${eventoId}, manteniendo registros más tempranos`);
         
     } catch (error) {
         console.error('Error limpiando duplicados:', error);
