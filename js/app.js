@@ -1199,26 +1199,23 @@ async function onScanSuccess(codigoUnico) {
     isScanning = true;
 
     try {
-        let estudiante = null;
+        // Buscar primero en cache local
+        let estudiante = findEstudianteInCache(codigoUnico);
         
-        // Intentar buscar en base de datos primero
-        try {
-            const { data, error } = await tursodb
-                .from('estudiantes')
-                .select('*')
-                .eq('codigo_unico', codigoUnico)
-                .maybeSingle();
-            
-            if (!error && data) {
-                estudiante = data;
-            }
-        } catch (networkError) {
-            console.log('Sin conexión, buscando en cache local...');
-        }
-        
-        // Si no se encontró en BD, buscar en cache
+        // Si no está en cache Y hay conexión, buscar en BD
         if (!estudiante) {
-            estudiante = findEstudianteInCache(codigoUnico);
+            try {
+                const { data, error } = await Promise.race([
+                    tursodb.from('estudiantes').select('*').eq('codigo_unico', codigoUnico).maybeSingle(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+                ]);
+                
+                if (!error && data) {
+                    estudiante = data;
+                }
+            } catch (networkError) {
+                console.log('Sin conexión, usando solo cache local');
+            }
         }
 
         if (!estudiante) {
@@ -1227,7 +1224,7 @@ async function onScanSuccess(codigoUnico) {
             return;
         }
 
-        // VERIFICAR DUPLICADOS EN COLA OFFLINE
+        // Verificar duplicados en cola offline
         const existeOffline = offlineQueue.find(a => 
             a.estudiante_id === estudiante.id && a.evento_id === currentEventId
         );
@@ -1238,44 +1235,37 @@ async function onScanSuccess(codigoUnico) {
             return;
         }
 
-        // Intentar guardar directamente en BD (modo online)
+        // Intentar guardar en BD con timeout corto
+        let guardadoOnline = false;
         try {
-            const NETWORK_TIMEOUT = 5000; // 5 segundos máximo
-            
-            const insertPromise = tursodb.from('asistencias').insert({
-                estudiante_id: estudiante.id,
-                evento_id: currentEventId
-            });
-            
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout')), NETWORK_TIMEOUT)
-            );
-            
-            const { error: insertError } = await Promise.race([insertPromise, timeoutPromise]);
+            const { error: insertError } = await Promise.race([
+                tursodb.from('asistencias').insert({
+                    estudiante_id: estudiante.id,
+                    evento_id: currentEventId
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+            ]);
 
             if (!insertError) {
-                // Éxito - guardado online
+                guardadoOnline = true;
                 showMessage(`✓ ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Asistencia registrada`, 'success');
-                setTimeout(() => {
-                    loadAsistencias(currentEventId);
-                }, 500);
-            } else {
-                throw new Error('Error de base de datos');
+                setTimeout(() => loadAsistencias(currentEventId), 500);
             }
         } catch (networkError) {
-            // Fallo online - guardar en cola offline
-            console.log('Fallo en modo online, guardando offline:', networkError.message);
+            console.log('Sin conexión, guardando offline');
+        }
+        
+        // Si falló online, guardar offline
+        if (!guardadoOnline) {
             const agregado = addToOfflineQueue(estudiante.id, currentEventId);
-            
             if (agregado) {
                 showMessage(`📱 ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Guardado offline`, 'success');
                 addToLocalAsistenciasList(estudiante);
             } else {
-                showMessage('Error guardando asistencia', 'error');
+                showMessage('Asistencia ya registrada', 'warning');
             }
         }
         
-        // Reiniciar escáner
         setTimeout(() => { 
             isScanning = false;
             if (html5QrCode && html5QrCode.isScanning) {
