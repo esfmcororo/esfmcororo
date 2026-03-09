@@ -335,13 +335,10 @@ async function syncOfflineQueue() {
     }
 }
 
-// Iniciar sincronización automática
+// Iniciar sincronización automática - DESHABILITADO
 function startAutoSync() {
-    setInterval(async () => {
-        if (Date.now() - lastSyncTime > SYNC_INTERVAL) {
-            await syncOfflineQueue();
-        }
-    }, SYNC_INTERVAL);
+    // Sincronización manual solamente
+    console.log('Sincronización automática deshabilitada - usar botón Sync manual');
 }
 
 // Forzar sincronización manual
@@ -1224,8 +1221,6 @@ function scanFile() {
 async function onScanSuccess(codigoUnico) {
     if (isScanning) return;
     isScanning = true;
-    
-    const requestStart = Date.now(); // Iniciar medición de latencia
 
     try {
         let estudiante = null;
@@ -1240,19 +1235,12 @@ async function onScanSuccess(codigoUnico) {
             
             if (!error && data) {
                 estudiante = data;
-                // Medir latencia de la consulta
-                const queryLatency = measureLatency(requestStart);
-                const shouldUseOffline = evaluateNetworkCondition(queryLatency);
-                
-                if (shouldUseOffline) {
-                    throw new Error('Usando modo offline por latencia alta');
-                }
             }
         } catch (networkError) {
-            console.log('Sin conexión o latencia alta, buscando en cache local...');
+            console.log('Sin conexión, buscando en cache local...');
         }
         
-        // Si no se encontró en BD o hay problemas de red, buscar en cache
+        // Si no se encontró en BD, buscar en cache
         if (!estudiante) {
             estudiante = findEstudianteInCache(codigoUnico);
         }
@@ -1274,65 +1262,40 @@ async function onScanSuccess(codigoUnico) {
             return;
         }
 
-        // Decidir si usar online u offline basado en latencia
-        const useOfflineMode = isAdaptiveOfflineMode || evaluateNetworkCondition(measureLatency(requestStart));
-        
-        // OPTIMIZACIÓN: Timeout más agresivo para detectar problemas rápido
-        const NETWORK_TIMEOUT = 4000; // 4 segundos máximo
-        
-        if (useOfflineMode) {
-            // Modo offline - guardar en cola
+        // Intentar guardar directamente en BD (modo online)
+        try {
+            const NETWORK_TIMEOUT = 5000; // 5 segundos máximo
+            
+            const insertPromise = tursodb.from('asistencias').insert({
+                estudiante_id: estudiante.id,
+                evento_id: currentEventId
+            });
+            
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), NETWORK_TIMEOUT)
+            );
+            
+            const { error: insertError } = await Promise.race([insertPromise, timeoutPromise]);
+
+            if (!insertError) {
+                // Éxito - guardado online
+                showMessage(`✓ ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Asistencia registrada`, 'success');
+                setTimeout(() => {
+                    loadAsistencias(currentEventId);
+                }, 500);
+            } else {
+                throw new Error('Error de base de datos');
+            }
+        } catch (networkError) {
+            // Fallo online - guardar en cola offline
+            console.log('Fallo en modo online, guardando offline:', networkError.message);
             const agregado = addToOfflineQueue(estudiante.id, currentEventId);
             
             if (agregado) {
                 showMessage(`📱 ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Guardado offline`, 'success');
                 addToLocalAsistenciasList(estudiante);
             } else {
-                showMessage('Asistencia ya registrada (en cola offline)', 'warning');
-            }
-        } else {
-            // Modo online - intentar guardar directamente con timeout
-            try {
-                const insertStart = Date.now();
-                
-                // Promise con timeout para evitar esperas largas
-                const insertPromise = tursodb.from('asistencias').insert({
-                    estudiante_id: estudiante.id,
-                    evento_id: currentEventId
-                });
-                
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Timeout')), NETWORK_TIMEOUT)
-                );
-                
-                const { error: insertError } = await Promise.race([insertPromise, timeoutPromise]);
-                
-                // Medir latencia de inserción
-                const insertLatency = measureLatency(insertStart);
-                evaluateNetworkCondition(insertLatency);
-
-                if (!insertError) {
-                    showMessage(`✓ ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Asistencia registrada`, 'success');
-                    setTimeout(() => {
-                        loadAsistencias(currentEventId);
-                    }, 500);
-                } else {
-                    throw new Error('Error de base de datos');
-                }
-            } catch (networkError) {
-                // Fallo online - cambiar a offline inmediatamente
-                console.log('Fallo en modo online, cambiando a offline:', networkError.message);
-                const agregado = addToOfflineQueue(estudiante.id, currentEventId);
-                
-                if (agregado) {
-                    showMessage(`📱 ${formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno)} - Guardado offline (red lenta)`, 'success');
-                    addToLocalAsistenciasList(estudiante);
-                    
-                    // Activar modo offline inmediatamente después de un fallo
-                    activateAdaptiveOfflineMode();
-                } else {
-                    showMessage('Error guardando asistencia', 'error');
-                }
+                showMessage('Error guardando asistencia', 'error');
             }
         }
         
