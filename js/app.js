@@ -1813,14 +1813,31 @@ async function generarQRsGrupoDirecto(especialidad, anio) {
 
         setTimeout(() => {
             const qrElement = document.getElementById(`qr-${index}`);
-            if (qrElement && typeof QRCode !== 'undefined') {
-                new QRCode(qrElement, {
-                text: est.codigo_unico,
-                width: 180,
-                height: 180,
-                correctLevel: QRCode.CorrectLevel.H
-            });
-        }
+            if (qrElement && typeof qrcode !== 'undefined') {
+                const qr = qrcode(4, 'H'); // Tipo 4, corrección de error alta
+                qr.addData(est.codigo_unico);
+                qr.make();
+                
+                // Crear imagen SVG
+                const size = 180;
+                const cellSize = size / qr.getModuleCount();
+                
+                let svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">`;
+                svg += `<rect width="${size}" height="${size}" fill="white"/>`;
+                
+                for (let row = 0; row < qr.getModuleCount(); row++) {
+                    for (let col = 0; col < qr.getModuleCount(); col++) {
+                        if (qr.isDark(row, col)) {
+                            const x = col * cellSize;
+                            const y = row * cellSize;
+                            svg += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="black"/>`;
+                        }
+                    }
+                }
+                svg += '</svg>';
+                
+                qrElement.innerHTML = svg;
+            }
         }, index * 100);
 
         qrCodesGenerated.push({ id: `qr-${index}`, nombre: nombreCompleto.replace(/\s+/g, '_') });
@@ -1828,40 +1845,48 @@ async function generarQRsGrupoDirecto(especialidad, anio) {
 }
 
 function downloadSingleQR(elementId, filename) {
-    const canvas = document.querySelector(`#${elementId} canvas`);
-    if (!canvas) return;
+    const svgElement = document.querySelector(`#${elementId} svg`);
+    if (!svgElement) return;
     
-    // Crear un nuevo canvas con los mismos píxeles pero diferente DPI en metadatos
-    const newCanvas = document.createElement('canvas');
-    const ctx = newCanvas.getContext('2d');
+    // Crear canvas para convertir SVG a PNG
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const size = 180;
     
-    newCanvas.width = canvas.width;
-    newCanvas.height = canvas.height;
+    canvas.width = size;
+    canvas.height = size;
     
-    // Copiar la imagen
-    ctx.drawImage(canvas, 0, 0);
+    // Convertir SVG a imagen
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
     
-    // Convertir a blob y modificar metadatos DPI
-    newCanvas.toBlob(function(blob) {
-        // Crear un nuevo blob con metadatos DPI de 150
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const arrayBuffer = e.target.result;
-            const uint8Array = new Uint8Array(arrayBuffer);
-            
-            // Modificar metadatos PNG para 150 DPI
-            // Buscar chunk pHYs y modificarlo o agregarlo
-            const modifiedBuffer = setPNGDPI(uint8Array, 150);
-            
-            const newBlob = new Blob([modifiedBuffer], { type: 'image/png' });
-            const link = document.createElement('a');
-            link.download = `${filename}.png`;
-            link.href = URL.createObjectURL(newBlob);
-            link.click();
-            URL.revokeObjectURL(link.href);
-        };
-        reader.readAsArrayBuffer(blob);
-    }, 'image/png', 1.0);
+    const img = new Image();
+    img.onload = function() {
+        ctx.drawImage(img, 0, 0);
+        
+        // Convertir a blob con metadatos DPI
+        canvas.toBlob(function(blob) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                // Modificar metadatos PNG para 150 DPI
+                const modifiedBuffer = setPNGDPI(uint8Array, 150);
+                
+                const newBlob = new Blob([modifiedBuffer], { type: 'image/png' });
+                const link = document.createElement('a');
+                link.download = `${filename}.png`;
+                link.href = URL.createObjectURL(newBlob);
+                link.click();
+                URL.revokeObjectURL(link.href);
+                URL.revokeObjectURL(url);
+            };
+            reader.readAsArrayBuffer(blob);
+        }, 'image/png', 1.0);
+    };
+    img.src = url;
 }
 
 // Función para establecer DPI en PNG
@@ -1934,11 +1959,11 @@ async function downloadAllQRs() {
     const container = document.getElementById('qr-container');
     
     try {
-        // Buscar todos los canvas ANTES de cambiar el contenido
-        const allCanvas = document.querySelectorAll('#qr-container canvas');
-        console.log('Canvas encontrados:', allCanvas.length);
+        // Buscar todos los SVG ANTES de cambiar el contenido
+        const allSvg = document.querySelectorAll('#qr-container svg');
+        console.log('SVG encontrados:', allSvg.length);
         
-        if (allCanvas.length === 0) {
+        if (allSvg.length === 0) {
             throw new Error('No se encontraron códigos QR. Genera los QRs primero.');
         }
         
@@ -1950,32 +1975,44 @@ async function downloadAllQRs() {
         
         let archivosAgregados = 0;
         
-        // Procesar cada canvas
-        for (let i = 0; i < allCanvas.length; i++) {
-            const canvas = allCanvas[i];
+        // Procesar cada SVG
+        for (let i = 0; i < allSvg.length; i++) {
+            const svgElement = allSvg[i];
             
             try {
                 // Obtener el nombre del estudiante del elemento padre
-                const qrItem = canvas.closest('.qr-item');
+                const qrItem = svgElement.closest('.qr-item');
                 const nombreElement = qrItem ? qrItem.querySelector('h3') : null;
                 const nombreCompleto = nombreElement ? nombreElement.textContent.trim() : `Estudiante_${i + 1}`;
                 const nombreArchivo = nombreCompleto.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
                 
-                // Crear canvas de alta resolución (150 DPI)
-                const highResCanvas = document.createElement('canvas');
-                const ctx = highResCanvas.getContext('2d');
-                const scale = 150 / 72; // Factor de escala para 150 DPI
+                // Crear canvas para convertir SVG a PNG
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const size = 180;
                 
-                highResCanvas.width = canvas.width * scale;
-                highResCanvas.height = canvas.height * scale;
+                canvas.width = size;
+                canvas.height = size;
                 
-                ctx.imageSmoothingEnabled = false;
-                ctx.scale(scale, scale);
-                ctx.drawImage(canvas, 0, 0);
+                // Convertir SVG a imagen
+                const svgData = new XMLSerializer().serializeToString(svgElement);
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
                 
-                // Convertir canvas de alta resolución a blob
+                const img = new Image();
+                await new Promise((resolve, reject) => {
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0);
+                        URL.revokeObjectURL(url);
+                        resolve();
+                    };
+                    img.onerror = reject;
+                    img.src = url;
+                });
+                
+                // Convertir canvas a blob
                 const blob = await new Promise(resolve => {
-                    highResCanvas.toBlob(resolve, 'image/png', 1.0);
+                    canvas.toBlob(resolve, 'image/png', 1.0);
                 });
                 
                 if (blob && blob.size > 100) {
@@ -1984,10 +2021,10 @@ async function downloadAllQRs() {
                     console.log(`QR agregado: ${nombreArchivo}`);
                 }
             } catch (err) {
-                console.warn(`Error procesando canvas ${i}:`, err);
+                console.warn(`Error procesando SVG ${i}:`, err);
             }
             
-            const progreso = Math.round(((i + 1) / allCanvas.length) * 100);
+            const progreso = Math.round(((i + 1) / allSvg.length) * 100);
             progressDiv.textContent = `📦 Procesando... ${progreso}%`;
         }
         
