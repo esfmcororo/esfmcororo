@@ -252,7 +252,7 @@ async function syncOfflineQueue() {
             console.log(`Sincronización: ${syncedCount} nuevas, ${skippedCount} ya existían`);
             // Recargar lista de asistencias si estamos en la pantalla del escáner
             if (currentEventId && document.getElementById('scanner-section').classList.contains('active')) {
-                loadAsistencias(currentEventId);
+                await loadAsistencias(currentEventId);
             }
         }
         
@@ -274,6 +274,11 @@ function startAutoSync() {
 async function forceSyncOffline() {
     // Usar la misma función que la sincronización automática (con validación de duplicados)
     await syncOfflineQueue();
+    
+    // Recargar lista si estamos en el escáner
+    if (currentEventId && document.getElementById('scanner-section').classList.contains('active')) {
+        await loadAsistencias(currentEventId);
+    }
     
     // Mostrar resultado al usuario
     if (offlineQueue.length === 0) {
