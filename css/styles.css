@@ -44,19 +44,23 @@ body {
 }
 
 .header {
-    background: white;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
     padding: 20px 30px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: sticky;
     top: 0;
     z-index: 100;
+    backdrop-filter: blur(10px);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .header h1 {
     font-size: 28px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
 @media (max-width: 768px) {
@@ -76,8 +80,8 @@ body {
 }
 
 .user-dropdown-btn {
-    background: #f8f9fa;
-    border: 1px solid #ddd;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     padding: 8px 15px;
     border-radius: 6px;
     cursor: pointer;
@@ -85,13 +89,15 @@ body {
     align-items: center;
     gap: 8px;
     font-size: 14px;
-    color: #333;
+    color: white;
     transition: all 0.3s;
+    backdrop-filter: blur(5px);
 }
 
 .user-dropdown-btn:hover {
-    background: #e9ecef;
-    border-color: #667eea;
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
 }
 
 .user-dropdown-content {
@@ -265,11 +271,16 @@ button {
 .btn-create:hover { background: #218838; }
 
 .btn-secondary {
-    background: #6c757d;
+    background: rgba(255, 255, 255, 0.2);
     color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(5px);
 }
 
-.btn-secondary:hover { background: #5a6268; }
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
 
 .error {
     color: #dc3545;
