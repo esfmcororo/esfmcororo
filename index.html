@@ -348,7 +348,7 @@
             <div class="header">
                 <h1>Registro de Usuarios</h1>
                 <div class="header-right">
-                    <button onclick="showGestionUsuarios()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <button onclick="showListaUsuarios()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
                     <div class="user-dropdown" id="user-dropdown-registro">
                         <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-registro')">
                             <span class="user-display-name"></span>
@@ -447,6 +447,100 @@
                 </div>
             </div>
         </div>
+        <!-- Editar Estudiante -->
+        <div id="editar-estudiante-section" class="section hidden">
+            <div class="header">
+                <h1>Editar Estudiante</h1>
+                <div class="header-right">
+                    <button onclick="showGestionEstudiantesCompleto()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-editar-est">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-editar-est')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="card">
+                    <input type="hidden" id="edit-est-id">
+                    <p style="color: #666; margin-bottom: 15px;"><strong>Especialidad:</strong> <span id="edit-form-especialidad"></span></p>
+                    <p style="color: #666; margin-bottom: 15px;"><strong>Año de Formación:</strong> <span id="edit-form-anio"></span></p>
+                    <input type="text" id="edit-est-codigo" placeholder="Código Único (ej: EST006)">
+                    <input type="text" id="edit-est-dni" placeholder="DNI/CI">
+                    <input type="text" id="edit-est-nombre" placeholder="Nombre">
+                    <input type="text" id="edit-est-apellido-paterno" placeholder="Apellido Paterno">
+                    <input type="text" id="edit-est-apellido-materno" placeholder="Apellido Materno">
+                    <input type="tel" id="edit-est-celular" placeholder="Celular (opcional)">
+                    <input type="email" id="edit-est-email" placeholder="Email (opcional)">
+                    <button onclick="actualizarEstudiante()" class="btn-primary">Actualizar Estudiante</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Usuarios -->
+        <div id="lista-usuarios-section" class="section hidden">
+            <div class="header">
+                <h1>Lista de Usuarios</h1>
+                <div class="header-right">
+                    <button onclick="showRegistroUsuarios()" class="btn-success" style="margin-right: 10px;">+ Nuevo Usuario</button>
+                    <button onclick="showGestionUsuarios()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-lista-usuarios">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-lista-usuarios')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div id="usuarios-list"></div>
+            </div>
+        </div>
+
+        <!-- Editar Usuario -->
+        <div id="editar-usuario-section" class="section hidden">
+            <div class="header">
+                <h1>Editar Usuario</h1>
+                <div class="header-right">
+                    <button onclick="showListaUsuarios()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-editar-usuario">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-editar-usuario')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="card">
+                    <input type="hidden" id="edit-usuario-id">
+                    <input type="text" id="edit-usuario-ci" placeholder="CI/DNI">
+                    <input type="text" id="edit-usuario-nombre" placeholder="Nombre completo">
+                    <input type="email" id="edit-usuario-email" placeholder="Email">
+                    <input type="tel" id="edit-usuario-celular" placeholder="Celular">
+                    <input type="text" id="edit-usuario-especialidad" placeholder="Especialidad">
+                    <input type="text" id="edit-usuario-codigo" placeholder="Código Único (RDA)">
+                    <select id="edit-usuario-rol">
+                        <option value="admin">Administrador</option>
+                        <option value="usuario">Usuario</option>
+                    </select>
+                    <button onclick="actualizarUsuarioTurso()" class="btn-primary">Actualizar Usuario</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
@@ -454,7 +548,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="js/tursodb.js?v=2026030828"></script>
+    <script src="js/tursodb.js?v=2026030829"></script>
     <script>
         // Máscara para formato 24 horas en campos de hora
         document.addEventListener('DOMContentLoaded', function() {
@@ -493,6 +587,6 @@
             });
         });
     </script>
-    <script src="js/app.js?v=2026030828"></script>
+    <script src="js/app.js?v=2026030829"></script>
 </body>
 </html>

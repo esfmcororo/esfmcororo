@@ -1021,9 +1021,11 @@ async function loadEventos(page = 1) {
         
         const card = document.createElement('div');
         card.className = 'evento-card';
-        const fechaInicio = new Date(evento.fecha_inicio + 'T00:00:00').toLocaleDateString('es-BO');
-        const fechaFin = new Date(evento.fecha_fin + 'T00:00:00').toLocaleDateString('es-BO');
-        const rangoFecha = fechaInicio === fechaFin ? fechaInicio : `${fechaInicio} - ${fechaFin}`;
+        const fechaInicio = evento.fecha_inicio.split('T')[0].split('-');
+        const fechaFin = evento.fecha_fin.split('T')[0].split('-');
+        const fechaInicioStr = `${fechaInicio[2]}/${fechaInicio[1]}/${fechaInicio[0]}`;
+        const fechaFinStr = `${fechaFin[2]}/${fechaFin[1]}/${fechaFin[0]}`;
+        const rangoFecha = fechaInicioStr === fechaFinStr ? fechaInicioStr : `${fechaInicioStr} - ${fechaFinStr}`;
         
         card.innerHTML = `
             <div class="evento-info">
@@ -1672,6 +1674,35 @@ async function agregarEstudiante() {
     showListaEstudiantes();
 }
 
+async function actualizarEstudiante() {
+    const id = document.getElementById('edit-est-id').value;
+    const codigo = document.getElementById('edit-est-codigo').value;
+    const dni = document.getElementById('edit-est-dni').value;
+    const nombre = document.getElementById('edit-est-nombre').value;
+    const apellidoPaterno = document.getElementById('edit-est-apellido-paterno').value;
+    const apellidoMaterno = document.getElementById('edit-est-apellido-materno').value || 'SIN DATO';
+    const celular = document.getElementById('edit-est-celular').value || null;
+    const email = document.getElementById('edit-est-email').value || null;
+
+    if (!codigo || !dni || !nombre || !apellidoPaterno) {
+        alert('Completa todos los campos obligatorios');
+        return;
+    }
+
+    try {
+        await tursodb.query(`
+            UPDATE estudiantes 
+            SET codigo_unico = ?, dni = ?, nombre = ?, apellido_paterno = ?, apellido_materno = ?, celular = ?, email = ?
+            WHERE id = ?
+        `, [codigo, dni, nombre, apellidoPaterno, apellidoMaterno, celular, email, id]);
+
+        alert('✓ Estudiante actualizado correctamente');
+        showGestionEstudiantesCompleto();
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
 async function generarQRsGrupo() {
     generarQRsGrupoDirecto(currentEspecialidad, currentAnio);
 }
@@ -2191,189 +2222,7 @@ function showEditarUsuario(usuarioId) {
     loadUsuarioParaEditar(usuarioId);
 }
 
-async function loadUsuarios() {
-    const listEl = document.getElementById('usuarios-list');
-    listEl.innerHTML = '<p style="color: white;">Cargando usuarios...</p>';
 
-    try {
-        const { data, error } = await tursodb.auth.admin.listUsers();
-        
-        if (error) {
-            listEl.innerHTML = '<p style="color: white;">Error cargando usuarios</p>';
-            return;
-        }
-
-        if (!data || data.users.length === 0) {
-            listEl.innerHTML = '<p style="color: white;">No hay usuarios registrados</p>';
-            return;
-        }
-
-        let html = '<div class="usuarios-grid">';
-        
-        data.users.forEach(usuario => {
-            const metadata = usuario.user_metadata || {};
-            const rol = metadata.rol || 'usuario';
-            const nombre = metadata.nombre || 'Sin nombre';
-            const ci = metadata.ci || 'Sin CI';
-            const celular = metadata.celular || '';
-            
-            html += `
-                <div class="usuario-card">
-                    <div class="usuario-info">
-                        <h3>${nombre}</h3>
-                        <p><strong>Email:</strong> ${usuario.email}</p>
-                        <p><strong>CI:</strong> ${ci}</p>
-                        <p><strong>Rol:</strong> <span class="rol-badge ${rol}">${rol.toUpperCase()}</span></p>
-                        <p><strong>Celular:</strong> ${celular || 'N/A'}</p>
-                        <p><strong>Último acceso:</strong> ${usuario.last_sign_in_at ? new Date(usuario.last_sign_in_at).toLocaleDateString('es-BO') : 'Nunca'}</p>
-                    </div>
-                    <div class="usuario-actions">
-                        <button onclick="showEditarUsuario('${usuario.id}')" class="btn-info">✏️ Editar</button>
-                        ${usuario.email !== 'admin@escuela.com' ? 
-                            `<button onclick="eliminarUsuario('${usuario.id}', '${nombre}')" class="btn-danger">🗑️ Eliminar</button>` : 
-                            '<span style="color: #666; font-size: 12px;">Admin principal</span>'
-                        }
-                    </div>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        listEl.innerHTML = html;
-        
-    } catch (error) {
-        console.error('Error:', error);
-        listEl.innerHTML = '<p style="color: white;">Error de conexión</p>';
-    }
-}
-
-async function loadUsuarioParaEditar(usuarioId) {
-    try {
-        const { data, error } = await tursodb.auth.admin.getUserById(usuarioId);
-        
-        if (error || !data.user) {
-            alert('Error cargando datos del usuario');
-            return;
-        }
-        
-        const usuario = data.user;
-        const metadata = usuario.user_metadata || {};
-        
-        document.getElementById('edit-usuario-id').value = usuario.id;
-        document.getElementById('edit-usuario-ci').value = metadata.ci || '';
-        document.getElementById('edit-usuario-nombre').value = metadata.nombre || '';
-        document.getElementById('edit-usuario-email').value = usuario.email || '';
-        document.getElementById('edit-usuario-celular').value = metadata.celular || '';
-        document.getElementById('edit-usuario-rol').value = metadata.rol || 'usuario';
-        
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error cargando usuario');
-    }
-}
-
-async function actualizarUsuario() {
-    const usuarioId = document.getElementById('edit-usuario-id').value;
-    const ci = document.getElementById('edit-usuario-ci').value;
-    const nombre = document.getElementById('edit-usuario-nombre').value;
-    const email = document.getElementById('edit-usuario-email').value;
-    const celular = document.getElementById('edit-usuario-celular').value;
-    const rol = document.getElementById('edit-usuario-rol').value;
-
-    if (!nombre || !email) {
-        alert('Nombre y email son obligatorios');
-        return;
-    }
-
-    try {
-        const { error } = await tursodb.auth.admin.updateUserById(usuarioId, {
-            email,
-            user_metadata: {
-                nombre,
-                ci,
-                celular,
-                rol
-            }
-        });
-
-        if (error) {
-            alert('Error: ' + error.message);
-            return;
-        }
-
-        alert('✓ Usuario actualizado correctamente');
-        showListaUsuarios();
-        
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error actualizando usuario');
-    }
-}
-
-async function eliminarUsuario(usuarioId, nombre) {
-    if (!confirm(`¿Estás seguro de eliminar al usuario "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
-        return;
-    }
-
-    try {
-        const { error } = await tursodb.auth.admin.deleteUser(usuarioId);
-
-        if (error) {
-            alert('Error: ' + error.message);
-            return;
-        }
-
-        alert('✓ Usuario eliminado correctamente');
-        loadUsuarios();
-        
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error eliminando usuario');
-    }
-}
-
-async function registrarDocente() {
-    const ci = document.getElementById('docente-ci').value;
-    const nombre = document.getElementById('docente-nombre').value;
-    const email = document.getElementById('docente-email').value;
-    const password = document.getElementById('docente-password').value;
-    const celular = document.getElementById('docente-celular').value;
-
-    if (!ci || !nombre || !email || !password) {
-        alert('Completa todos los campos obligatorios');
-        return;
-    }
-
-    try {
-        const { data, error } = await tursodb.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    nombre,
-                    ci,
-                    celular: celular || null,
-                    rol: 'usuario'
-                }
-            }
-        });
-
-        if (error) {
-            alert('Error: ' + error.message);
-            return;
-        }
-
-        document.getElementById('docente-ci').value = '';
-        document.getElementById('docente-nombre').value = '';
-        document.getElementById('docente-email').value = '';
-        document.getElementById('docente-password').value = '';
-        document.getElementById('docente-celular').value = '';
-
-        alert('✓ Docente registrado correctamente');
-    } catch (err) {
-        alert('Error: ' + err.message);
-    }
-}
 function showRegistroUsuarios() {
     hideAllSections();
     document.getElementById('registro-usuarios-section').classList.add('active');
@@ -2441,7 +2290,141 @@ async function insertarUsuario(userData) {
     }
 }
 function showListaUsuarios() {
-    showRegistroUsuarios();
+    hideAllSections();
+    document.getElementById('lista-usuarios-section').classList.add('active');
+    updateAllUserDropdowns();
+    loadUsuariosTurso();
+}
+
+async function loadUsuariosTurso() {
+    const listEl = document.getElementById('usuarios-list');
+    if (!listEl) {
+        console.error('Elemento usuarios-list no encontrado');
+        return;
+    }
+    
+    listEl.innerHTML = '<p style="color: white;">Cargando usuarios...</p>';
+
+    try {
+        const result = await tursodb.query('SELECT * FROM usuarios ORDER BY created_at DESC');
+        
+        if (!result.rows || result.rows.length === 0) {
+            listEl.innerHTML = '<p style="color: white;">No hay usuarios registrados</p>';
+            return;
+        }
+
+        let html = '<div class="usuarios-grid">';
+        
+        result.rows.forEach(usuario => {
+            const rol = usuario.rol || 'usuario';
+            const nombre = usuario.nombre || 'Sin nombre';
+            const ci = usuario.ci || 'Sin CI';
+            const celular = usuario.celular || '';
+            
+            html += `
+                <div class="usuario-card">
+                    <div class="usuario-info">
+                        <h3>${nombre}</h3>
+                        <p><strong>Email:</strong> ${usuario.email}</p>
+                        <p><strong>CI:</strong> ${ci}</p>
+                        <p><strong>Rol:</strong> <span class="rol-badge ${rol}">${rol.toUpperCase()}</span></p>
+                        <p><strong>Celular:</strong> ${celular || 'N/A'}</p>
+                        <p><strong>Especialidad:</strong> ${usuario.especialidad || 'N/A'}</p>
+                    </div>
+                    <div class="usuario-actions">
+                        <button onclick="editarUsuarioTurso('${usuario.id}')" class="btn-info">✏️ Editar</button>
+                        ${usuario.email !== 'admin@escuela.com' ? 
+                            `<button onclick="eliminarUsuarioTurso('${usuario.id}', '${nombre.replace(/'/g, "\\'")}')" class="btn-danger">🗑️ Eliminar</button>` : 
+                            '<span style="color: #666; font-size: 12px;">Admin principal</span>'
+                        }
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        listEl.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        listEl.innerHTML = '<p style="color: white;">Error de conexión</p>';
+    }
+}
+
+async function eliminarUsuarioTurso(usuarioId, nombre) {
+    if (!confirm(`¿Estás seguro de eliminar al usuario "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        await tursodb.query('DELETE FROM usuarios WHERE id = ?', [usuarioId]);
+        alert('✓ Usuario eliminado correctamente');
+        loadUsuariosTurso();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error eliminando usuario');
+    }
+}
+
+async function editarUsuarioTurso(usuarioId) {
+    try {
+        const result = await tursodb.query('SELECT * FROM usuarios WHERE id = ?', [usuarioId]);
+        
+        if (!result.rows || result.rows.length === 0) {
+            alert('Error cargando datos del usuario');
+            return;
+        }
+        
+        const usuario = result.rows[0];
+        
+        hideAllSections();
+        document.getElementById('editar-usuario-section').classList.add('active');
+        updateAllUserDropdowns();
+        
+        document.getElementById('edit-usuario-id').value = usuario.id;
+        document.getElementById('edit-usuario-ci').value = usuario.ci || '';
+        document.getElementById('edit-usuario-nombre').value = usuario.nombre || '';
+        document.getElementById('edit-usuario-email').value = usuario.email || '';
+        document.getElementById('edit-usuario-celular').value = usuario.celular || '';
+        document.getElementById('edit-usuario-especialidad').value = usuario.especialidad || '';
+        document.getElementById('edit-usuario-codigo').value = usuario.codigo_unico || '';
+        document.getElementById('edit-usuario-rol').value = usuario.rol || 'usuario';
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error cargando usuario');
+    }
+}
+
+async function actualizarUsuarioTurso() {
+    const usuarioId = document.getElementById('edit-usuario-id').value;
+    const ci = document.getElementById('edit-usuario-ci').value;
+    const nombre = document.getElementById('edit-usuario-nombre').value;
+    const email = document.getElementById('edit-usuario-email').value;
+    const celular = document.getElementById('edit-usuario-celular').value;
+    const especialidad = document.getElementById('edit-usuario-especialidad').value;
+    const codigoUnico = document.getElementById('edit-usuario-codigo').value;
+    const rol = document.getElementById('edit-usuario-rol').value;
+
+    if (!nombre || !email) {
+        alert('Nombre y email son obligatorios');
+        return;
+    }
+
+    try {
+        await tursodb.query(`
+            UPDATE usuarios 
+            SET ci = ?, nombre = ?, email = ?, celular = ?, especialidad = ?, codigo_unico = ?, rol = ?
+            WHERE id = ?
+        `, [ci, nombre, email, celular, especialidad, codigoUnico, rol, usuarioId]);
+
+        alert('✓ Usuario actualizado correctamente');
+        showListaUsuarios();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error actualizando usuario');
+    }
 }
 // Control de permisos por rol
 function checkAdminPermissions() {
@@ -2458,29 +2441,7 @@ function showGestionUsuarios() {
     document.getElementById('gestion-usuarios-section').classList.add('active');
 }
 
-// Sobrescribir función de eliminar usuario con permisos
-const originalEliminarUsuario = window.eliminarUsuario;
-window.eliminarUsuario = function(id) {
-    if (!checkAdminPermissions()) {
-        alert('Solo los administradores pueden eliminar usuarios');
-        return;
-    }
-    if (originalEliminarUsuario) {
-        originalEliminarUsuario(id);
-    }
-};
 
-// Sobrescribir función de editar usuario con permisos
-const originalShowEditarUsuario = window.showEditarUsuario;
-window.showEditarUsuario = function(id) {
-    if (!checkAdminPermissions()) {
-        alert('Solo los administradores pueden editar usuarios');
-        return;
-    }
-    if (originalShowEditarUsuario) {
-        originalShowEditarUsuario(id);
-    }
-};
 // Función para verificar y crear admin si no existe
 // Sistema inicializado al cargar
 window.addEventListener('DOMContentLoaded', async function() {
@@ -2609,5 +2570,30 @@ async function eliminarEstudiante(estudianteId, nombreCompleto) {
 }
 
 async function editarEstudiante(estudianteId) {
-    alert('Función de edición en desarrollo');
+    try {
+        const result = await tursodb.query('SELECT * FROM estudiantes WHERE id = ?', [estudianteId]);
+        if (!result.rows || result.rows.length === 0) {
+            alert('Estudiante no encontrado');
+            return;
+        }
+        
+        const estudiante = result.rows[0];
+        
+        hideAllSections();
+        document.getElementById('editar-estudiante-section').classList.add('active');
+        updateAllUserDropdowns();
+        
+        document.getElementById('edit-est-id').value = estudiante.id;
+        document.getElementById('edit-form-especialidad').textContent = estudiante.especialidad;
+        document.getElementById('edit-form-anio').textContent = estudiante.anio_formacion;
+        document.getElementById('edit-est-codigo').value = estudiante.codigo_unico;
+        document.getElementById('edit-est-dni').value = estudiante.dni;
+        document.getElementById('edit-est-nombre').value = estudiante.nombre;
+        document.getElementById('edit-est-apellido-paterno').value = estudiante.apellido_paterno;
+        document.getElementById('edit-est-apellido-materno').value = estudiante.apellido_materno || '';
+        document.getElementById('edit-est-celular').value = estudiante.celular || '';
+        document.getElementById('edit-est-email').value = estudiante.email || '';
+    } catch (error) {
+        alert('Error cargando estudiante: ' + error.message);
+    }
 }
