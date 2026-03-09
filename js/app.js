@@ -1038,6 +1038,9 @@ async function loadEventos(page = 1) {
                     Tomar Asistencia
                 </button>
                 <button class="btn-info" onclick="verListaAsistencias('${evento.id}', '${evento.nombre.replace(/'/g, "\\'")}')">📋 Ver Lista</button>
+                ${isAdmin() ? 
+                    `<button class="btn-warning" onclick="editarEvento('${evento.id}')">✏️ Editar</button>` : ''
+                }
                 ${!tieneAsistencias && isAdmin() ? 
                     `<button class="btn-danger" onclick="eliminarEvento('${evento.id}')">🗑️ Eliminar</button>` : ''
                 }
@@ -1874,6 +1877,69 @@ async function downloadAllQRs() {
     }
 }
 // ========== GESTIÓN DE EVENTOS AVANZADA ==========
+
+async function editarEvento(eventoId) {
+    try {
+        const result = await tursodb.query('SELECT * FROM eventos WHERE id = ?', [eventoId]);
+        
+        if (!result.rows || result.rows.length === 0) {
+            alert('Evento no encontrado');
+            return;
+        }
+        
+        const evento = result.rows[0];
+        
+        hideAllSections();
+        document.getElementById('editar-evento-section').classList.add('active');
+        updateAllUserDropdowns();
+        
+        document.getElementById('edit-evento-id').value = evento.id;
+        document.getElementById('edit-evento-nombre').value = evento.nombre;
+        document.getElementById('edit-evento-fecha-inicio').value = evento.fecha_inicio.split('T')[0];
+        document.getElementById('edit-evento-fecha-fin').value = evento.fecha_fin.split('T')[0];
+        document.getElementById('edit-evento-hora-inicio').value = evento.hora_inicio;
+        document.getElementById('edit-evento-hora-fin').value = evento.hora_fin;
+    } catch (error) {
+        alert('Error cargando evento: ' + error.message);
+    }
+}
+
+async function actualizarEvento() {
+    const id = document.getElementById('edit-evento-id').value;
+    const nombre = document.getElementById('edit-evento-nombre').value;
+    const fechaInicio = document.getElementById('edit-evento-fecha-inicio').value;
+    const fechaFin = document.getElementById('edit-evento-fecha-fin').value;
+    const horaInicio = document.getElementById('edit-evento-hora-inicio').value;
+    const horaFin = document.getElementById('edit-evento-hora-fin').value;
+
+    if (!nombre || !fechaInicio || !fechaFin || !horaInicio || !horaFin) {
+        alert('Completa todos los campos obligatorios');
+        return;
+    }
+
+    if (new Date(fechaFin) < new Date(fechaInicio)) {
+        alert('La fecha fin no puede ser anterior a la fecha inicio');
+        return;
+    }
+
+    if (fechaInicio === fechaFin && horaFin <= horaInicio) {
+        alert('La hora fin debe ser posterior a la hora inicio');
+        return;
+    }
+
+    try {
+        await tursodb.query(`
+            UPDATE eventos 
+            SET nombre = ?, fecha_inicio = ?, fecha_fin = ?, hora_inicio = ?, hora_fin = ?
+            WHERE id = ?
+        `, [nombre, fechaInicio, fechaFin, horaInicio, horaFin, id]);
+
+        alert('✓ Evento actualizado correctamente');
+        showAsistenciaModule();
+    } catch (error) {
+        alert('Error actualizando evento: ' + error.message);
+    }
+}
 
 async function eliminarEvento(eventoId) {
     if (!confirm('¿Estás seguro de que quieres eliminar este evento? Esta acción no se puede deshacer.')) {

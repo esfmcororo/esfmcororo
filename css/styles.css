@@ -694,6 +694,23 @@ button {
     flex: 2;
     min-width: 120px;
 }
+
+.btn-warning {
+    background: #ffc107;
+    color: #333;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.3s;
+    flex: 1;
+    min-width: 80px;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+}
 /* Estilos para sistema offline */
 .offline-indicator {
     position: fixed;

@@ -121,6 +121,41 @@
             </div>
         </div>
 
+        <!-- Editar Evento -->
+        <div id="editar-evento-section" class="section hidden">
+            <div class="header">
+                <h1>Editar Evento</h1>
+                <div class="header-right">
+                    <button onclick="showAsistenciaModule()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-editar-evento">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-editar-evento')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="card">
+                    <input type="hidden" id="edit-evento-id">
+                    <input type="text" id="edit-evento-nombre" placeholder="Nombre del evento">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Fecha Inicio:</label>
+                    <input type="date" id="edit-evento-fecha-inicio">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Fecha Fin:</label>
+                    <input type="date" id="edit-evento-fecha-fin">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Hora Inicio (formato 24h):</label>
+                    <input type="text" id="edit-evento-hora-inicio" placeholder="HH:MM (ej: 17:00)" maxlength="5">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Hora Fin (formato 24h):</label>
+                    <input type="text" id="edit-evento-hora-fin" placeholder="HH:MM (ej: 17:00)" maxlength="5">
+                    <button onclick="actualizarEvento()" class="btn-primary">Actualizar Evento</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Tomar Asistencia -->
         <div id="scanner-section" class="section hidden">
             <div class="header">
@@ -548,11 +583,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="js/tursodb.js?v=2026030830"></script>
+    <script src="js/tursodb.js?v=2026030831"></script>
     <script>
         // Máscara para formato 24 horas en campos de hora
         document.addEventListener('DOMContentLoaded', function() {
-            const horaInputs = ['evento-hora-inicio', 'evento-hora-fin'];
+            const horaInputs = ['evento-hora-inicio', 'evento-hora-fin', 'edit-evento-hora-inicio', 'edit-evento-hora-fin'];
             
             horaInputs.forEach(id => {
                 const input = document.getElementById(id);
@@ -587,6 +622,6 @@
             });
         });
     </script>
-    <script src="js/app.js?v=2026030830"></script>
+    <script src="js/app.js?v=2026030831"></script>
 </body>
 </html>
