@@ -2015,7 +2015,7 @@ async function downloadAllQRs() {
                 
                 // Convertir canvas a blob con metadatos DPI
                 const blob = await new Promise(resolve => {
-                    canvas.toBlob(function(blob) {
+                    canvas.toBlob(function(originalBlob) {
                         const reader = new FileReader();
                         reader.onload = function(e) {
                             const arrayBuffer = e.target.result;
@@ -2026,7 +2026,7 @@ async function downloadAllQRs() {
                             const newBlob = new Blob([modifiedBuffer], { type: 'image/png' });
                             resolve(newBlob);
                         };
-                        reader.readAsArrayBuffer(blob);
+                        reader.readAsArrayBuffer(originalBlob);
                     }, 'image/png', 1.0);
                 });
                 
