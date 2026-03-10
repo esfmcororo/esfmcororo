@@ -1943,8 +1943,21 @@ async function downloadAllQRs() {
     }
     
     const zip = new JSZip();
-    const especialidadLimpia = currentEspecialidad.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').toUpperCase();
-    const nombreZip = `QRs_${especialidadLimpia}_${currentAnio}.zip`;
+    
+    // Determinar nombre del ZIP según el contexto
+    let nombreZip;
+    if (currentEspecialidad && currentAnio) {
+        // Para estudiantes
+        const especialidadLimpia = currentEspecialidad.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').toUpperCase();
+        nombreZip = `QRs_${especialidadLimpia}_${currentAnio}.zip`;
+    } else if (currentTipoPersonal) {
+        // Para personal administrativo
+        const tipoLimpio = currentTipoPersonal.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').toUpperCase();
+        nombreZip = `QRs_${tipoLimpio}.zip`;
+    } else {
+        // Fallback genérico
+        nombreZip = `QRs_${new Date().toISOString().split('T')[0]}.zip`;
+    }
     
     const container = document.getElementById('qr-container');
     
@@ -2724,6 +2737,8 @@ async function procesarExcelPersonal() {
 }
 
 async function generarQRsPersonalDirecto(tipoPersonal) {
+    currentTipoPersonal = tipoPersonal; // Guardar tipo para el ZIP
+    
     hideAllSections();
     document.getElementById('generar-qr-section').classList.add('active');
     updateAllUserDropdowns();
