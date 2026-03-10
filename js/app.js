@@ -857,6 +857,10 @@ function showEstudiantes() {
     document.getElementById('estudiantes-section').classList.add('active');
     updateAllUserDropdowns();
     loadEstudiantes();
+    
+    // Cambiar botón volver según origen
+    const volverBtn = document.querySelector('#estudiantes-section .header-right button');
+    volverBtn.onclick = () => showAsistenciaModule();
 }
 
 function showAgregarEstudiante() {
@@ -1194,11 +1198,14 @@ function scanFile() {
         });
 }
 
-async function onScanSuccess(codigoUnico) {
+async function onScanSuccess(qrData) {
     if (isScanning) return;
     isScanning = true;
 
     try {
+        // Extraer código único del QR (primer campo antes del |)
+        const codigoUnico = qrData.split('|')[0];
+        
         // Buscar primero en cache local
         let estudiante = findEstudianteInCache(codigoUnico);
         
@@ -1814,12 +1821,13 @@ async function generarQRsGrupoDirecto(especialidad, anio) {
         setTimeout(() => {
             const qrElement = document.getElementById(`qr-${index}`);
             if (qrElement && typeof qrcode !== 'undefined') {
-                const qr = qrcode(4, 'H'); // Tipo 4, corrección de error alta
-                qr.addData(est.codigo_unico);
+                const qrData = `${est.codigo_unico}|${est.especialidad}|${formatearNombreCompleto(est.nombre, est.apellido_paterno, est.apellido_materno)}|ESFM Simón Bolívar de Cororo`;
+                const qr = qrcode(0, 'M'); // Tipo 0 (automático), corrección media
+                qr.addData(qrData);
                 qr.make();
                 
                 // Crear imagen SVG
-                const size = 360;
+                const size = 120;
                 const cellSize = size / qr.getModuleCount();
                 
                 let svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">`;
@@ -2464,7 +2472,470 @@ async function exportarAsistenciasExcel() {
     }
 }
 
-// ========== GESTIÓN DE USUARIOS CON ROLES ==========
+// ========== GESTIÓN DE PERSONAL ==========
+
+function showPersonal() {
+    if (!isAdmin()) {
+        alert('Solo administradores pueden gestionar personal');
+        return;
+    }
+    hideAllSections();
+    document.getElementById('personal-section').classList.add('active');
+    updateAllUserDropdowns();
+    loadPersonalSoloQR(); // Solo QRs desde asistencia
+    
+    // Cambiar botón volver según origen
+    const volverBtn = document.querySelector('#personal-section .header-right button');
+    volverBtn.onclick = () => showAsistenciaModule();
+}
+
+function showGestionPersonal() {
+    hideAllSections();
+    document.getElementById('personal-section').classList.add('active');
+    updateAllUserDropdowns();
+    loadPersonalCompleto(); // CRUD completo desde gestión
+    
+    // Cambiar botón volver según origen
+    const volverBtn = document.querySelector('#personal-section .header-right button');
+    volverBtn.onclick = () => showGestionUsuarios();
+}
+
+function showCargaPersonal() {
+    hideAllSections();
+    document.getElementById('carga-personal-section').classList.add('active');
+    updateAllUserDropdowns();
+}
+
+async function loadPersonalSoloQR() {
+    const container = document.getElementById('personal-accordion');
+    container.innerHTML = '<p style="color: white;">Cargando...</p>';
+
+    const result = await tursodb.query(`SELECT * FROM administrativos ORDER BY personal, codigo_unico`);
+    
+    if (!result.rows || result.rows.length === 0) {
+        container.innerHTML = '<p style="color: white;">No hay personal registrado. Usa la carga masiva para importar desde Excel.</p>';
+        return;
+    }
+
+    const data = result.rows;
+    data.sort((a, b) => {
+        if (a.personal !== b.personal) return a.personal.localeCompare(b.personal);
+        return a.codigo_unico.localeCompare(b.codigo_unico);
+    });
+
+    const grouped = {};
+    data.forEach(person => {
+        const tipo = person.personal || 'Sin Tipo';
+        if (!grouped[tipo]) grouped[tipo] = [];
+        grouped[tipo].push(person);
+    });
+
+    container.innerHTML = '';
+    
+    Object.keys(grouped).sort().forEach(tipoPersonal => {
+        const accordion = document.createElement('div');
+        accordion.className = 'accordion';
+        
+        const totalPersonal = grouped[tipoPersonal].length;
+        const tipoId = tipoPersonal.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+        
+        accordion.innerHTML = `
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>👔 ${tipoPersonal} (${totalPersonal} personas)</span>
+                <div>
+                    <button class="btn-success" style="padding: 5px 10px; font-size: 12px;">📥 QRs</button>
+                    <span style="margin-left: 10px;">▼</span>
+                </div>
+            </div>
+            <div class="accordion-content">
+                <div id="personal-${tipoId}"></div>
+            </div>
+        `;
+        container.appendChild(accordion);
+
+        const btnQRs = accordion.querySelector('.btn-success');
+        btnQRs.onclick = function(e) {
+            e.stopPropagation();
+            generarQRsPersonalDirecto(tipoPersonal);
+        };
+
+        const personalContainer = accordion.querySelector(`#personal-${tipoId}`);
+        personalContainer.innerHTML = grouped[tipoPersonal].map(person => `
+            <div class="estudiante-item">
+                <div>
+                    <strong>${formatearNombreCompleto(person.nombre, person.apellido_paterno, person.apellido_materno)}</strong><br>
+                    <small>📋 ${person.codigo_unico} | 🆔 ${formatearCampoOpcional(person.dni, 'Sin DNI')} | 💼 ${formatearCampoOpcional(person.cargo, 'Sin cargo')} | 📱 ${formatearCampoOpcional(person.celular, 'Sin celular')}</small>
+                </div>
+            </div>
+        `).join('');
+    });
+}
+
+async function loadPersonalCompleto() {
+    const container = document.getElementById('personal-accordion');
+    container.innerHTML = '<p style="color: white;">Cargando...</p>';
+
+    const result = await tursodb.query(`SELECT * FROM administrativos ORDER BY personal, codigo_unico`);
+    
+    if (!result.rows || result.rows.length === 0) {
+        container.innerHTML = '<p style="color: white;">No hay personal registrado. Usa la carga masiva para importar desde Excel.</p>';
+        return;
+    }
+
+    const data = result.rows;
+    data.sort((a, b) => {
+        if (a.personal !== b.personal) return a.personal.localeCompare(b.personal);
+        return a.codigo_unico.localeCompare(b.codigo_unico);
+    });
+
+    const grouped = {};
+    data.forEach(person => {
+        const tipo = person.personal || 'Sin Tipo';
+        if (!grouped[tipo]) grouped[tipo] = [];
+        grouped[tipo].push(person);
+    });
+
+    container.innerHTML = '';
+    
+    Object.keys(grouped).sort().forEach(tipoPersonal => {
+        const accordion = document.createElement('div');
+        accordion.className = 'accordion';
+        
+        const totalPersonal = grouped[tipoPersonal].length;
+        const tipoId = tipoPersonal.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+        
+        accordion.innerHTML = `
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>👔 ${tipoPersonal} (${totalPersonal} personas)</span>
+                <div>
+                    <button class="btn-primary" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">+ Agregar</button>
+                    <span style="margin-left: 10px;">▼</span>
+                </div>
+            </div>
+            <div class="accordion-content">
+                <div id="personal-${tipoId}"></div>
+            </div>
+        `;
+        container.appendChild(accordion);
+
+        const btnAgregar = accordion.querySelector('.btn-primary');
+        btnAgregar.onclick = function(e) {
+            e.stopPropagation();
+            agregarPersonalA(tipoPersonal);
+        };
+
+        const personalContainer = accordion.querySelector(`#personal-${tipoId}`);
+        personalContainer.innerHTML = grouped[tipoPersonal].map(person => `
+            <div class="estudiante-item">
+                <div>
+                    <strong>${formatearNombreCompleto(person.nombre, person.apellido_paterno, person.apellido_materno)}</strong><br>
+                    <small>📋 ${person.codigo_unico} | 🆔 ${formatearCampoOpcional(person.dni, 'Sin DNI')} | 💼 ${formatearCampoOpcional(person.cargo, 'Sin cargo')} | 📱 ${formatearCampoOpcional(person.celular, 'Sin celular')} | ✉️ ${formatearCampoOpcional(person.email, 'Sin email')}</small>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-info" style="padding: 5px 10px; font-size: 11px;" onclick="editarPersonal('${person.id}')">✏️</button>
+                    <button class="btn-danger" style="padding: 5px 10px; font-size: 11px;" onclick="eliminarPersonal('${person.id}', '${formatearNombreCompleto(person.nombre, person.apellido_paterno, person.apellido_materno).replace(/'/g, "\\'")}')">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    });
+}
+
+async function procesarExcelPersonal() {
+    const fileInput = document.getElementById('excel-file-personal');
+    const resultadoDiv = document.getElementById('resultado-carga-personal');
+    
+    if (!fileInput.files[0]) {
+        alert('Selecciona un archivo Excel');
+        return;
+    }
+    
+    console.log('Archivo seleccionado:', fileInput.files[0].name);
+    resultadoDiv.innerHTML = '<p style="color: blue;">📁 Leyendo archivo Excel...</p>';
+
+    try {
+        const data = await fileInput.files[0].arrayBuffer();
+        resultadoDiv.innerHTML = '<p style="color: blue;">📊 Procesando datos...</p>';
+        
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        if (jsonData.length === 0) {
+            resultadoDiv.innerHTML = '<p style="color: red;">❌ El archivo está vacío</p>';
+            return;
+        }
+
+        // Detectar cabeceras
+        let startRow = 0;
+        const firstRow = jsonData[0];
+        if (firstRow && firstRow.some(cell => 
+            typeof cell === 'string' && 
+            (cell.toLowerCase().includes('nombre') || 
+             cell.toLowerCase().includes('dni') || 
+             cell.toLowerCase().includes('codigo'))
+        )) {
+            startRow = 1;
+        }
+
+        let exitosos = 0;
+        let errores = 0;
+        const erroresDetalle = [];
+        const totalFilas = jsonData.length - startRow;
+        
+        for (let i = startRow; i < jsonData.length; i++) {
+            const fila = jsonData[i];
+            
+            if (!fila || fila.every(cell => !cell)) continue;
+            
+            try {
+                // Limpiar espacios extra y manejar campos vacíos
+                const personal = {
+                    codigo_unico: fila[0] ? fila[0].toString().trim() : '',
+                    dni: fila[1] ? fila[1].toString().trim() : '',
+                    apellido_paterno: fila[2] ? fila[2].toString().toUpperCase().trim() : '',
+                    apellido_materno: (fila[3] && fila[3].toString().trim()) ? fila[3].toString().toUpperCase().trim() : 'SIN DATO',
+                    nombre: fila[4] ? fila[4].toString().toUpperCase().trim() : '',
+                    personal: fila[5] ? fila[5].toString().toUpperCase().trim() : '',
+                    cargo: fila[6] ? fila[6].toString().toUpperCase().trim() : '',
+                    celular: fila[7] ? fila[7].toString().trim() : null,
+                    email: (fila[8] && fila[8].toString().trim()) ? fila[8].toString().toLowerCase().trim() : null
+                };
+                
+                if (!personal.codigo_unico || !personal.dni || !personal.nombre || !personal.apellido_paterno || !personal.personal || !personal.cargo) {
+                    errores++;
+                    erroresDetalle.push(`Fila ${i + 1}: Faltan campos obligatorios`);
+                    continue;
+                }
+                
+                const { error } = await tursodb.from('administrativos').insert(personal);
+
+                if (error) {
+                    errores++;
+                    erroresDetalle.push(`Fila ${i + 1}: ${error.message}`);
+                } else {
+                    exitosos++;
+                }
+            } catch (err) {
+                errores++;
+                erroresDetalle.push(`Fila ${i + 1}: ${err.message}`);
+            }
+        }
+
+        let resultado = `<h4>📊 Proceso completado:</h4>`;
+        resultado += `<p style="color: green; font-size: 18px;">✅ Personal cargado: <strong>${exitosos}</strong></p>`;
+        if (errores > 0) {
+            resultado += `<p style="color: red; font-size: 18px;">❌ Errores: <strong>${errores}</strong></p>`;
+        }
+        
+        resultadoDiv.innerHTML = resultado;
+        
+        if (exitosos > 0) {
+            setTimeout(() => {
+                alert(`🎉 Proceso completado\n✅ ${exitosos} personas cargadas\n❌ ${errores} errores`);
+            }, 1000);
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        resultadoDiv.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+    }
+}
+
+async function generarQRsPersonalDirecto(tipoPersonal) {
+    hideAllSections();
+    document.getElementById('generar-qr-section').classList.add('active');
+    updateAllUserDropdowns();
+    
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '<p style="color: white;">Generando QRs...</p>';
+    qrCodesGenerated = [];
+
+    const result = await tursodb.query(`SELECT * FROM administrativos WHERE personal = ? ORDER BY codigo_unico`, [tipoPersonal]);
+    
+    if (!result.rows || result.rows.length === 0) {
+        container.innerHTML = '<p style="color: white;">No hay personal para este tipo</p>';
+        return;
+    }
+    
+    const personalFiltrado = result.rows;
+
+    container.innerHTML = '';
+    
+    personalFiltrado.forEach((person, index) => {
+        const qrItem = document.createElement('div');
+        qrItem.className = 'qr-item';
+        const nombreCompleto = formatearNombreCompleto(person.nombre, person.apellido_paterno, person.apellido_materno);
+        qrItem.innerHTML = `
+            <h3>${nombreCompleto}</h3>
+            <p><strong>${person.codigo_unico}</strong></p>
+            <p><small>${person.cargo}</small></p>
+            <div class="qr-code" id="qr-${index}"></div>
+            <button class="download-btn" onclick="downloadSingleQR('qr-${index}', '${nombreCompleto.replace(/\s+/g, '_')}')">📥 Descargar</button>
+        `;
+        container.appendChild(qrItem);
+
+        setTimeout(() => {
+            const qrElement = document.getElementById(`qr-${index}`);
+            if (qrElement && typeof qrcode !== 'undefined') {
+                const qrData = `${person.codigo_unico}|${person.cargo}|${nombreCompleto}|ESFM Simón Bolívar de Cororo`;
+                const qr = qrcode(0, 'M');
+                qr.addData(qrData);
+                qr.make();
+                
+                const size = 120;
+                const cellSize = size / qr.getModuleCount();
+                
+                let svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">`;
+                svg += `<rect width="${size}" height="${size}" fill="white"/>`;
+                
+                for (let row = 0; row < qr.getModuleCount(); row++) {
+                    for (let col = 0; col < qr.getModuleCount(); col++) {
+                        if (qr.isDark(row, col)) {
+                            const x = col * cellSize;
+                            const y = row * cellSize;
+                            svg += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="black"/>`;
+                        }
+                    }
+                }
+                svg += '</svg>';
+                
+                qrElement.innerHTML = svg;
+            }
+        }, index * 100);
+
+        qrCodesGenerated.push({ id: `qr-${index}`, nombre: nombreCompleto.replace(/\s+/g, '_') });
+    });
+}
+
+let currentTipoPersonal = null;
+
+function agregarPersonalA(tipoPersonal) {
+    currentTipoPersonal = tipoPersonal;
+    showAgregarPersonal();
+}
+
+function showAgregarPersonal() {
+    hideAllSections();
+    document.getElementById('agregar-personal-section').classList.add('active');
+    updateAllUserDropdowns();
+    document.getElementById('form-tipo-personal').textContent = currentTipoPersonal;
+}
+
+async function agregarPersonal() {
+    const codigo = document.getElementById('per-codigo').value;
+    const dni = document.getElementById('per-dni').value;
+    const nombre = document.getElementById('per-nombre').value;
+    const apellidoPaterno = document.getElementById('per-apellido-paterno').value;
+    const apellidoMaterno = document.getElementById('per-apellido-materno').value || 'SIN DATO';
+    const cargo = document.getElementById('per-cargo').value;
+    const celular = document.getElementById('per-celular').value;
+    const email = document.getElementById('per-email').value;
+
+    if (!codigo || !dni || !nombre || !apellidoPaterno || !cargo) {
+        alert('Completa todos los campos obligatorios');
+        return;
+    }
+
+    try {
+        const { error } = await tursodb.from('administrativos').insert({
+            codigo_unico: codigo,
+            dni: dni,
+            nombre,
+            apellido_paterno: apellidoPaterno,
+            apellido_materno: apellidoMaterno,
+            personal: currentTipoPersonal,
+            cargo: cargo,
+            celular: celular || null,
+            email: email || null
+        });
+
+        if (error) {
+            alert('Error: ' + error.message);
+            return;
+        }
+
+        // Limpiar formulario
+        ['per-codigo', 'per-dni', 'per-nombre', 'per-apellido-paterno', 'per-apellido-materno', 'per-cargo', 'per-celular', 'per-email'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+
+        alert('✓ Personal agregado correctamente');
+        showGestionPersonal();
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function eliminarPersonal(personalId, nombreCompleto) {
+    if (!confirm(`¿Eliminar a ${nombreCompleto}?\n\nEsta acción no se puede deshacer.`)) return;
+    
+    try {
+        await tursodb.query('DELETE FROM administrativos WHERE id = ?', [personalId]);
+        alert('Personal eliminado correctamente');
+        loadPersonal();
+    } catch (error) {
+        alert('Error al eliminar: ' + error.message);
+    }
+}
+
+async function editarPersonal(personalId) {
+    try {
+        const result = await tursodb.query('SELECT * FROM administrativos WHERE id = ?', [personalId]);
+        if (!result.rows || result.rows.length === 0) {
+            alert('Personal no encontrado');
+            return;
+        }
+        
+        const personal = result.rows[0];
+        
+        hideAllSections();
+        document.getElementById('editar-personal-section').classList.add('active');
+        updateAllUserDropdowns();
+        
+        document.getElementById('edit-per-id').value = personal.id;
+        document.getElementById('edit-form-tipo-personal').textContent = personal.personal;
+        document.getElementById('edit-per-codigo').value = personal.codigo_unico;
+        document.getElementById('edit-per-dni').value = personal.dni;
+        document.getElementById('edit-per-nombre').value = personal.nombre;
+        document.getElementById('edit-per-apellido-paterno').value = personal.apellido_paterno;
+        document.getElementById('edit-per-apellido-materno').value = personal.apellido_materno || '';
+        document.getElementById('edit-per-cargo').value = personal.cargo;
+        document.getElementById('edit-per-celular').value = personal.celular || '';
+        document.getElementById('edit-per-email').value = personal.email || '';
+    } catch (error) {
+        alert('Error cargando personal: ' + error.message);
+    }
+}
+
+async function actualizarPersonal() {
+    const id = document.getElementById('edit-per-id').value;
+    const codigo = document.getElementById('edit-per-codigo').value;
+    const dni = document.getElementById('edit-per-dni').value;
+    const nombre = document.getElementById('edit-per-nombre').value;
+    const apellidoPaterno = document.getElementById('edit-per-apellido-paterno').value;
+    const apellidoMaterno = document.getElementById('edit-per-apellido-materno').value || 'SIN DATO';
+    const cargo = document.getElementById('edit-per-cargo').value;
+    const celular = document.getElementById('edit-per-celular').value || null;
+    const email = document.getElementById('edit-per-email').value || null;
+
+    if (!codigo || !dni || !nombre || !apellidoPaterno || !cargo) {
+        alert('Completa todos los campos obligatorios');
+        return;
+    }
+
+    try {
+        await tursodb.query(`
+            UPDATE administrativos 
+            SET codigo_unico = ?, dni = ?, nombre = ?, apellido_paterno = ?, apellido_materno = ?, cargo = ?, celular = ?, email = ?
+            WHERE id = ?
+        `, [codigo, dni, nombre, apellidoPaterno, apellidoMaterno, cargo, celular, email, id]);
+
+        alert('✓ Personal actualizado correctamente');
+        showGestionPersonal();
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
 
 function showListaUsuarios() {
     if (!isAdmin()) {
@@ -2729,6 +3200,10 @@ function showGestionEstudiantesCompleto() {
     document.getElementById('estudiantes-section').classList.add('active');
     updateAllUserDropdowns();
     loadEstudiantesConEdicion();
+    
+    // Cambiar botón volver según origen
+    const volverBtn = document.querySelector('#estudiantes-section .header-right button');
+    volverBtn.onclick = () => showGestionUsuarios();
 }
 
 async function loadEstudiantesConEdicion() {

@@ -66,7 +66,8 @@
             <div class="header">
                 <h1>Módulo de Asistencia</h1>
                 <div class="header-right">
-                    <button onclick="showEstudiantes()" class="btn-secondary" style="margin-right: 10px;">👥 Estudiantes</button>
+                    <button onclick="showEstudiantes()" class="btn-secondary" style="margin-right: 10px;">🎓 Estudiantes</button>
+                    <button onclick="showPersonal()" class="btn-secondary" style="margin-right: 10px;">👥 Personal</button>
                     <button onclick="showDashboard()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
                     <div class="user-dropdown" id="user-dropdown-asistencia">
                         <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-asistencia')">
@@ -196,7 +197,7 @@
             <div class="header">
                 <h1>Gestión de Estudiantes</h1>
                 <div class="header-right">
-                    <button onclick="showDashboard()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <button onclick="showAsistenciaModule()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
                     <div class="user-dropdown" id="user-dropdown-estudiantes">
                         <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-estudiantes')">
                             <span class="user-display-name"></span>
@@ -378,10 +379,20 @@
                         <h3>Carga Masiva Estudiantes</h3>
                         <p>Subir estudiantes desde archivo Excel</p>
                     </div>
+                    <div class="module-card" onclick="showCargaPersonal()">
+                        <div class="module-icon">👔</div>
+                        <h3>Carga Masiva Personal</h3>
+                        <p>Subir personal administrativo desde Excel</p>
+                    </div>
                     <div class="module-card" onclick="showGestionEstudiantesCompleto()">
                         <div class="module-icon">🎓</div>
                         <h3>Estudiantes</h3>
                         <p>Gestionar estudiantes por especialidad y año</p>
+                    </div>
+                    <div class="module-card" onclick="showGestionPersonal()">
+                        <div class="module-icon">👥</div>
+                        <h3>Personal</h3>
+                        <p>Gestionar personal administrativo</p>
                     </div>
                 </div>
             </div>
@@ -598,6 +609,154 @@
                         <option value="usuario">Usuario</option>
                     </select>
                     <button onclick="actualizarUsuarioTurso()" class="btn-primary">Actualizar Usuario</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gestión de Personal -->
+        <div id="personal-section" class="section hidden">
+            <div class="header">
+                <h1>Gestión de Personal</h1>
+                <div class="header-right">
+                    <button onclick="showAsistenciaModule()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-personal">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-personal')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div id="personal-accordion"></div>
+            </div>
+        </div>
+
+        <!-- Carga Masiva Personal -->
+        <div id="carga-personal-section" class="section hidden">
+            <div class="header">
+                <h1>Carga Masiva de Personal</h1>
+                <div class="header-right">
+                    <button onclick="showGestionUsuarios()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-carga-personal">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-carga-personal')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="card">
+                    <h3>Formato del archivo Excel para Personal:</h3>
+                    <p style="color: #666; margin-bottom: 15px;">El archivo puede tener cabeceras o no. Columnas en orden:</p>
+                    <ul style="color: #666; margin-bottom: 20px; text-align: left;">
+                        <li><strong>Columna A:</strong> CÓDIGO (OBLIGATORIO - ej: ADM001)</li>
+                        <li><strong>Columna B:</strong> C.I. (DNI/CI)</li>
+                        <li><strong>Columna C:</strong> APELLIDO_PATERNO</li>
+                        <li><strong>Columna D:</strong> APELLIDO_MATERNO (opcional)</li>
+                        <li><strong>Columna E:</strong> NOMBRES</li>
+                        <li><strong>Columna F:</strong> PERSONAL (Directorio General, Asesor Legal, etc.)</li>
+                        <li><strong>Columna G:</strong> CARGO (cargo específico - OBLIGATORIO)</li>
+                        <li><strong>Columna H:</strong> CELULAR (opcional)</li>
+                        <li><strong>Columna I:</strong> EMAIL (opcional)</li>
+                    </ul>
+                    <input type="file" id="excel-file-personal" accept=".xlsx,.xls" style="margin-bottom: 15px;">
+                    <button onclick="procesarExcelPersonal()" class="btn-success">Subir y Procesar Excel</button>
+                    <div id="resultado-carga-personal" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agregar Personal -->
+        <div id="agregar-personal-section" class="section hidden">
+            <div class="header">
+                <h1>Agregar Personal</h1>
+                <div class="header-right">
+                    <button onclick="showGestionPersonal()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-agregar-personal">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-agregar-personal')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="card">
+                    <p style="color: #666; margin-bottom: 15px;"><strong>Tipo de Personal:</strong> <span id="form-tipo-personal"></span></p>
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Código Único:</label>
+                    <input type="text" id="per-codigo" placeholder="Código Único (ej: ADM001)">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">DNI/CI:</label>
+                    <input type="text" id="per-dni" placeholder="DNI/CI">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Nombre:</label>
+                    <input type="text" id="per-nombre" placeholder="Nombre">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Apellido Paterno:</label>
+                    <input type="text" id="per-apellido-paterno" placeholder="Apellido Paterno">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Apellido Materno:</label>
+                    <input type="text" id="per-apellido-materno" placeholder="Apellido Materno">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Cargo:</label>
+                    <input type="text" id="per-cargo" placeholder="Cargo (ej: Director Ejecutivo)">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Celular (opcional):</label>
+                    <input type="tel" id="per-celular" placeholder="Celular (opcional)">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Email (opcional):</label>
+                    <input type="email" id="per-email" placeholder="Email (opcional)">
+                    <button onclick="agregarPersonal()" class="btn-primary">Agregar Personal</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editar Personal -->
+        <div id="editar-personal-section" class="section hidden">
+            <div class="header">
+                <h1>Editar Personal</h1>
+                <div class="header-right">
+                    <button onclick="showGestionPersonal()" class="btn-secondary" style="margin-right: 10px;">← Volver</button>
+                    <div class="user-dropdown" id="user-dropdown-editar-personal">
+                        <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-editar-personal')">
+                            <span class="user-display-name"></span>
+                            <span>▼</span>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
+                            <button onclick="logout()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="card">
+                    <input type="hidden" id="edit-per-id">
+                    <p style="color: #666; margin-bottom: 15px;"><strong>Tipo de Personal:</strong> <span id="edit-form-tipo-personal"></span></p>
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Código Único:</label>
+                    <input type="text" id="edit-per-codigo" placeholder="Código Único">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">DNI/CI:</label>
+                    <input type="text" id="edit-per-dni" placeholder="DNI/CI">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Nombre:</label>
+                    <input type="text" id="edit-per-nombre" placeholder="Nombre">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Apellido Paterno:</label>
+                    <input type="text" id="edit-per-apellido-paterno" placeholder="Apellido Paterno">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Apellido Materno:</label>
+                    <input type="text" id="edit-per-apellido-materno" placeholder="Apellido Materno">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Cargo:</label>
+                    <input type="text" id="edit-per-cargo" placeholder="Cargo">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Celular (opcional):</label>
+                    <input type="tel" id="edit-per-celular" placeholder="Celular (opcional)">
+                    <label style="color: #666; font-size: 14px; margin-bottom: 5px;">Email (opcional):</label>
+                    <input type="email" id="edit-per-email" placeholder="Email (opcional)">
+                    <button onclick="actualizarPersonal()" class="btn-primary">Actualizar Personal</button>
                 </div>
             </div>
         </div>
