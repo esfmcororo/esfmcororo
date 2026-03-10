@@ -1130,23 +1130,6 @@ async function validarEventoActivo(eventoId) {
 }
 
 function startScanner() {
-    const readerDiv = document.getElementById('reader');
-    
-    // Mostrar opciones: Cámara o Subir Imagen
-    readerDiv.innerHTML = `
-        <div style="padding: 20px; background: white; border-radius: 10px; text-align: center;">
-            <button onclick="startCamera()" style="padding: 15px 30px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 10px; width: 200px;">
-                📷 Usar Cámara
-            </button>
-            <br>
-            <button onclick="showFileUpload()" style="padding: 15px 30px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 10px; width: 200px;">
-                🖼️ Subir Imagen
-            </button>
-        </div>
-    `;
-}
-
-function startCamera() {
     html5QrCode = new Html5Qrcode("reader");
     
     Html5Qrcode.getCameras().then(cameras => {
@@ -1157,51 +1140,22 @@ function startCamera() {
                 onScanSuccess,
                 () => {}
             ).catch(err => {
-                showMessage('Error al iniciar cámara. Usa la opción de subir imagen.', 'error');
-                startScanner();
+                showMessage('Error al iniciar cámara', 'error');
             });
         } else {
-            showMessage('No se detectó cámara. Usa la opción de subir imagen.', 'warning');
-            startScanner();
+            showMessage('No se detectó cámara', 'warning');
         }
     }).catch(err => {
-        showMessage('No se puede acceder a la cámara. Usa la opción de subir imagen.', 'error');
-        startScanner();
+        showMessage('No se puede acceder a la cámara', 'error');
     });
-}
-
-function showFileUpload() {
-    const readerDiv = document.getElementById('reader');
-    readerDiv.innerHTML = `
-        <div style="padding: 30px; background: white; border-radius: 10px; text-align: center;">
-            <h3 style="margin-bottom: 20px;">📷 Subir imagen del código QR</h3>
-            <input type="file" id="qr-file" accept="image/*" style="margin-bottom: 20px;">
-            <button onclick="scanFile()" style="padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer;">Escanear Imagen</button>
-        </div>
-    `;
-}
-
-function scanFile() {
-    const fileInput = document.getElementById('qr-file');
-    const file = fileInput.files[0];
-    if (!file) {
-        alert('Selecciona una imagen primero');
-        return;
-    }
-    
-    const html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.scanFile(file, true)
-        .then(decodedText => {
-            onScanSuccess(decodedText);
-        })
-        .catch(err => {
-            showMessage('No se pudo leer el código QR de la imagen', 'error');
-        });
 }
 
 async function onScanSuccess(qrData) {
     if (isScanning) return;
     isScanning = true;
+
+    // Prevenir recarga de página
+    event?.preventDefault?.();
 
     try {
         // Extraer código único del QR (primer campo antes del |)
