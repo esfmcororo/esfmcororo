@@ -2013,9 +2013,21 @@ async function downloadAllQRs() {
                     img.src = url;
                 });
                 
-                // Convertir canvas a blob
+                // Convertir canvas a blob con metadatos DPI
                 const blob = await new Promise(resolve => {
-                    canvas.toBlob(resolve, 'image/png', 1.0);
+                    canvas.toBlob(function(blob) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const arrayBuffer = e.target.result;
+                            const uint8Array = new Uint8Array(arrayBuffer);
+                            
+                            // Modificar metadatos PNG para 300 DPI
+                            const modifiedBuffer = setPNGDPI(uint8Array, 300);
+                            const newBlob = new Blob([modifiedBuffer], { type: 'image/png' });
+                            resolve(newBlob);
+                        };
+                        reader.readAsArrayBuffer(blob);
+                    }, 'image/png', 1.0);
                 });
                 
                 if (blob && blob.size > 100) {
