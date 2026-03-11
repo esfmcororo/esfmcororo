@@ -1142,15 +1142,14 @@ function startScanner() {
     const scannerContainer = document.getElementById('scanner-container');
     const photoTools = document.getElementById('photo-tools');
     
-    // Ocultar todo al inicio
+    // Ocultar todo al inicio usando clases CSS
     if (scannerContainer) {
         scannerContainer.innerHTML = '';
         scannerContainer.style.display = 'none';
     }
     if (photoTools) {
-        photoTools.className = 'scanner-controls hide';
-        photoTools.style.display = 'none';
-        photoTools.style.visibility = 'hidden';
+        photoTools.classList.remove('show');
+        photoTools.classList.add('hide');
     }
     
     // Asegurar que no hay cámara activa
@@ -1192,12 +1191,11 @@ function startCameraScanner() {
         console.log('✅ Cámara anterior limpiada');
     }
     
-    // PASO 2: Ocultar herramientas de foto
+    // PASO 2: Ocultar herramientas de foto usando clase CSS
     if (photoTools) {
-        photoTools.className = 'scanner-controls hide'; // Agregar clase 'hide'
-        photoTools.style.display = 'none';
-        photoTools.style.visibility = 'hidden';
-        console.log('🙈 Herramientas de foto ocultas');
+        photoTools.classList.remove('show');
+        photoTools.classList.add('hide');
+        console.log('🙈 Herramientas de foto ocultas con clase .hide');
     }
     
     // PASO 3: Preparar área de cámara
@@ -1288,12 +1286,11 @@ function showFileUpload() {
         console.log('🙈 Área de cámara oculta');
     }
     
-    // PASO 3: Mostrar herramientas de foto
+    // PASO 3: Mostrar herramientas de foto usando clase CSS
     if (photoTools) {
-        photoTools.className = 'scanner-controls'; // Remover clase 'hide'
-        photoTools.style.display = 'flex';
-        photoTools.style.visibility = 'visible';
-        console.log('📱 Herramientas de foto mostradas');
+        photoTools.classList.remove('hide');
+        photoTools.classList.add('show');
+        console.log('📱 Herramientas de foto mostradas con clase .show');
     }
     
     // PASO 4: Actualizar botones
