@@ -1132,6 +1132,13 @@ function startScanner() {
     document.getElementById('btn-camera').onclick = startCameraScanner;
     document.getElementById('btn-file').onclick = showFileUpload;
     
+    // ASEGURAR QUE EL BOTÓN PROCESAR ESTÉ CONFIGURADO
+    const btnProcessImage = document.getElementById('btn-process-image');
+    if (btnProcessImage) {
+        btnProcessImage.onclick = processSelectedImage;
+        console.log('✅ Botón Procesar configurado en startScanner');
+    }
+    
     // Iniciar con cámara por defecto
     startCameraScanner();
 }
@@ -1216,10 +1223,14 @@ function showFileUpload() {
         html5QrCode.stop().catch(console.error);
     }
     
-    // Configurar botón de procesar imagen
+    // Configurar botón de procesar imagen - ASEGURAR QUE ESTÉ VISIBLE
     const btnProcessImage = document.getElementById('btn-process-image');
     if (btnProcessImage) {
         btnProcessImage.onclick = processSelectedImage;
+        btnProcessImage.style.display = 'inline-block'; // Forzar visibilidad
+        console.log('✅ Botón Procesar configurado y visible');
+    } else {
+        console.error('❌ Botón btn-process-image no encontrado');
     }
 }
 
@@ -1234,26 +1245,18 @@ function processSelectedImage() {
     
     console.log('📁 Procesando imagen:', file.name);
     
-    // Crear un objeto Html5Qrcode temporal para escanear archivo
-    const tempScanner = new Html5Qrcode("temp-reader");
+    // Mostrar mensaje de procesamiento
+    showMessage('Procesando imagen...', 'info');
     
-    // Crear elemento temporal oculto
-    const tempDiv = document.createElement('div');
-    tempDiv.id = 'temp-reader';
-    tempDiv.style.display = 'none';
-    document.body.appendChild(tempDiv);
-    
-    tempScanner.scanFile(file, true)
+    // Usar Html5Qrcode para escanear archivo directamente
+    Html5Qrcode.scanFile(file, true)
         .then(decodedText => {
             console.log('✅ QR decodificado desde archivo:', decodedText);
-            // Limpiar elemento temporal
-            document.body.removeChild(tempDiv);
             // Procesar el resultado directamente
             onScanSuccess(decodedText, null);
         })
         .catch(err => {
             console.error('❌ Error escaneando archivo:', err);
-            document.body.removeChild(tempDiv);
             showMessage('No se pudo leer el código QR de la imagen', 'error');
         });
     
