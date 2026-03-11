@@ -1132,14 +1132,13 @@ function startScanner() {
     document.getElementById('btn-camera').onclick = startCameraScanner;
     document.getElementById('btn-file').onclick = showFileUpload;
     
-    // ASEGURAR QUE EL BOTÓN PROCESAR ESTÉ CONFIGURADO
+    // Configurar botón de procesar imagen
     const btnProcessImage = document.getElementById('btn-process-image');
     if (btnProcessImage) {
         btnProcessImage.onclick = processSelectedImage;
-        console.log('✅ Botón Procesar configurado en startScanner');
     }
     
-    // Iniciar con cámara por defecto
+    // INICIAR CON CÁMARA POR DEFECTO (sin mostrar herramientas de foto)
     startCameraScanner();
 }
 
@@ -1147,16 +1146,12 @@ function startScanner() {
 
 function startCameraScanner() {
     const scannerContainer = document.getElementById('scanner-container');
-    const fileContainer = document.getElementById('file-container');
     const photoTools = document.getElementById('photo-tools');
     
-    // Mostrar cámara y ocultar herramientas de foto
+    // MOSTRAR cámara y OCULTAR herramientas de foto
     if (scannerContainer) {
         scannerContainer.innerHTML = '<div id="camera-reader"></div>';
         scannerContainer.style.display = 'block';
-    }
-    if (fileContainer) {
-        fileContainer.style.display = 'none';
     }
     if (photoTools) {
         photoTools.style.display = 'none';
@@ -1174,7 +1169,7 @@ function startCameraScanner() {
         btnFile.textContent = '📁 Cargar Foto';
     }
     
-    console.log('✅ Modo CÁMARA activado - Solo herramientas de cámara');
+    console.log('✅ Modo CÁMARA activado - Herramientas de foto ocultas');
     
     // Inicializar escáner de cámara
     if (html5QrCode) {
@@ -1204,15 +1199,12 @@ function initializeCameraScanner() {
 
 function showFileUpload() {
     const scannerContainer = document.getElementById('scanner-container');
-    const fileContainer = document.getElementById('file-container');
     const photoTools = document.getElementById('photo-tools');
     
-    // Ocultar cámara y mostrar modo foto
+    // OCULTAR cámara y MOSTRAR herramientas de foto
     if (scannerContainer) {
         scannerContainer.style.display = 'none';
-    }
-    if (fileContainer) {
-        fileContainer.style.display = 'block';
+        scannerContainer.innerHTML = ''; // Limpiar contenido de cámara
     }
     if (photoTools) {
         photoTools.style.display = 'flex';
@@ -1234,13 +1226,14 @@ function showFileUpload() {
     const btnProcessImage = document.getElementById('btn-process-image');
     if (btnProcessImage) {
         btnProcessImage.onclick = processSelectedImage;
-        console.log('✅ Modo CARGAR FOTO activado - Herramientas visibles');
     }
     
     // Detener cámara si está activa
     if (html5QrCode && html5QrCode.isScanning) {
         html5QrCode.stop().catch(console.error);
     }
+    
+    console.log('✅ Modo CARGAR FOTO activado - Cámara oculta');
 }
 
 function processSelectedImage() {

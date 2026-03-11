@@ -185,18 +185,16 @@
                     <button id="btn-file" class="btn-secondary" style="padding: 8px 16px; font-size: 14px; margin: 0 5px;">📁 Cargar Foto</button>
                 </div>
                 
-                <!-- Herramientas para cargar fotos -->
+                <!-- Área principal - solo se muestra UNA opción a la vez -->
+                <div id="scanner-container"></div>
+                
+                <!-- Herramientas para cargar fotos (ocultas por defecto) -->
                 <div id="photo-tools" class="scanner-controls" style="display: none; background: #e8f5e8; border: 2px solid #28a745;">
                     <input type="file" id="qr-file-input" accept="image/*" style="padding: 8px; margin: 0 5px; border-radius: 5px; border: 1px solid #28a745;">
                     <button id="btn-process-image" class="btn-success" style="padding: 8px 16px; font-size: 14px; margin: 0 5px;">🔍 Procesar Imagen</button>
-                    <p style="color: #28a745; font-size: 12px; margin: 5px; text-align: center;">Selecciona una imagen con código QR y presiona "Procesar Imagen"</p>
+                    <p style="color: #28a745; font-size: 12px; margin: 5px; text-align: center; width: 100%;">Selecciona una imagen con código QR y presiona "Procesar Imagen"</p>
                 </div>
                 
-                <div id="scanner-container"></div>
-                <div id="file-container" style="display: none;">
-                    <h4 style="color: #28a745; margin-bottom: 15px; text-align: center;">📁 Modo: Cargar Foto</h4>
-                    <p style="color: #666; font-size: 14px; text-align: center;">Usa las herramientas de arriba para seleccionar y procesar tu imagen</p>
-                </div>
                 <div id="reader"></div>
                 <div id="mensaje"></div>
                 <div class="asistencias-box">
