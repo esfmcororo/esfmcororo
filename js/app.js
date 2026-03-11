@@ -1194,6 +1194,7 @@ function startCameraScanner() {
     
     // PASO 2: Ocultar herramientas de foto
     if (photoTools) {
+        photoTools.className = 'scanner-controls hide'; // Agregar clase 'hide'
         photoTools.style.display = 'none';
         photoTools.style.visibility = 'hidden';
         console.log('🙈 Herramientas de foto ocultas');
@@ -1289,6 +1290,7 @@ function showFileUpload() {
     
     // PASO 3: Mostrar herramientas de foto
     if (photoTools) {
+        photoTools.className = 'scanner-controls'; // Remover clase 'hide'
         photoTools.style.display = 'flex';
         photoTools.style.visibility = 'visible';
         console.log('📱 Herramientas de foto mostradas');
