@@ -1063,16 +1063,41 @@ button {
     padding: 20px;
     border-radius: 8px;
     margin: 10px 0;
-    border: 2px dashed #007bff;
+    border: 2px dashed #28a745;
     text-align: center;
 }
 
-#file-container input[type="file"] {
-    margin: 10px 0;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background: #f8f9fa;
+/* Herramientas para cargar fotos */
+#photo-tools {
+    background: rgba(40, 167, 69, 0.1) !important;
+    border: 2px solid #28a745 !important;
+    padding: 15px !important;
+    border-radius: 8px !important;
+    margin: 10px 0 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+}
+
+#photo-tools input[type="file"] {
+    background: white !important;
+    border: 1px solid #28a745 !important;
+    border-radius: 5px !important;
+    padding: 8px !important;
+    color: #333 !important;
+    flex: 1 !important;
+    min-width: 200px !important;
+    max-width: 300px !important;
+}
+
+#photo-tools p {
+    width: 100% !important;
+    margin: 5px 0 0 0 !important;
+    color: #28a745 !important;
+    font-size: 12px !important;
+    text-align: center !important;
 }
 
 #btn-process-image {
@@ -1086,7 +1111,6 @@ button {
     cursor: pointer !important;
     transition: all 0.3s !important;
     display: inline-block !important;
-    margin-left: 10px !important;
 }
 
 #btn-process-image:hover {
@@ -1103,6 +1127,11 @@ button {
     margin: 15px 0 !important;
     border: 1px solid #dee2e6 !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
 }
 
 .scanner-controls button {

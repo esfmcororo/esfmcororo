@@ -1148,8 +1148,9 @@ function startScanner() {
 function startCameraScanner() {
     const scannerContainer = document.getElementById('scanner-container');
     const fileContainer = document.getElementById('file-container');
-    const btnProcessImage = document.getElementById('btn-process-image');
+    const photoTools = document.getElementById('photo-tools');
     
+    // Mostrar cámara y ocultar herramientas de foto
     if (scannerContainer) {
         scannerContainer.innerHTML = '<div id="camera-reader"></div>';
         scannerContainer.style.display = 'block';
@@ -1157,14 +1158,11 @@ function startCameraScanner() {
     if (fileContainer) {
         fileContainer.style.display = 'none';
     }
-    
-    // OCULTAR el botón Procesar cuando esté en modo cámara
-    if (btnProcessImage) {
-        btnProcessImage.style.display = 'none';
-        console.log('✅ Botón Procesar OCULTO en modo cámara');
+    if (photoTools) {
+        photoTools.style.display = 'none';
     }
     
-    // Actualizar botones
+    // Actualizar botones principales
     const btnCamera = document.getElementById('btn-camera');
     const btnFile = document.getElementById('btn-file');
     if (btnCamera) {
@@ -1173,8 +1171,10 @@ function startCameraScanner() {
     }
     if (btnFile) {
         btnFile.className = 'btn-secondary';
-        btnFile.textContent = '📁 Subir Imagen';
+        btnFile.textContent = '📁 Cargar Foto';
     }
+    
+    console.log('✅ Modo CÁMARA activado - Solo herramientas de cámara');
     
     // Inicializar escáner de cámara
     if (html5QrCode) {
@@ -1205,32 +1205,36 @@ function initializeCameraScanner() {
 function showFileUpload() {
     const scannerContainer = document.getElementById('scanner-container');
     const fileContainer = document.getElementById('file-container');
-    const btnProcessImage = document.getElementById('btn-process-image');
+    const photoTools = document.getElementById('photo-tools');
     
+    // Ocultar cámara y mostrar modo foto
     if (scannerContainer) {
         scannerContainer.style.display = 'none';
     }
     if (fileContainer) {
         fileContainer.style.display = 'block';
     }
+    if (photoTools) {
+        photoTools.style.display = 'flex';
+    }
     
-    // Actualizar botones
+    // Actualizar botones principales
     const btnCamera = document.getElementById('btn-camera');
     const btnFile = document.getElementById('btn-file');
     if (btnCamera) {
         btnCamera.className = 'btn-secondary';
-        btnCamera.textContent = '📷 Usar Cámara';
+        btnCamera.textContent = '📷 Cámara';
     }
     if (btnFile) {
         btnFile.className = 'btn-primary';
-        btnFile.textContent = '📁 Archivo Activo';
+        btnFile.textContent = '📁 Cargar Foto Activo';
     }
     
-    // MOSTRAR el botón Procesar cuando esté en modo archivo
+    // Configurar botón de procesar imagen
+    const btnProcessImage = document.getElementById('btn-process-image');
     if (btnProcessImage) {
-        btnProcessImage.style.display = 'inline-block';
         btnProcessImage.onclick = processSelectedImage;
-        console.log('✅ Botón Procesar VISIBLE y configurado');
+        console.log('✅ Modo CARGAR FOTO activado - Herramientas visibles');
     }
     
     // Detener cámara si está activa
