@@ -1134,43 +1134,203 @@ function startScanner() {
         
         Html5Qrcode.getCameras().then(cameras => {
             if (cameras && cameras.length > 0) {
-                html5QrCode.start(
-                    { facingMode: "environment" },
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
-                    onScanSuccess,
-                    () => {}
-                ).catch(err => {
-                    showMessage('Error al iniciar cámara', 'error');
-                });
+                // Mostrar opciones de cámara y archivo
+                showScannerOptions();
             } else {
-                showMessage('No se detectó cámara', 'warning');
+                // Solo mostrar opción de archivo
+                showFileUploadOnly();
             }
         }).catch(err => {
-            showMessage('No se puede acceder a la cámara', 'error');
+            console.log('Error accediendo a cámaras:', err);
+            // Solo mostrar opción de archivo
+            showFileUploadOnly();
         });
     }, 100); // 100ms delay
 }
 
+function showScannerOptions() {
+    const readerDiv = document.getElementById('reader');
+    readerDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button id="btn-camera" class="btn-primary" style="margin-right: 10px;">📷 Usar Cámara</button>
+            <button id="btn-file" class="btn-secondary">📁 Subir Imagen</button>
+        </div>
+        <div id="scanner-container"></div>
+        <div id="file-container" style="display: none;">
+            <input type="file" id="qr-file-input" accept="image/*" style="margin: 20px 0;">
+            <p style="color: #666; font-size: 14px;">Selecciona una imagen que contenga un código QR</p>
+        </div>
+    `;
+    
+    document.getElementById('btn-camera').onclick = startCameraScanner;
+    document.getElementById('btn-file').onclick = showFileUpload;
+    
+    // Iniciar con cámara por defecto
+    startCameraScanner();
+}
+
+function showFileUploadOnly() {
+    const readerDiv = document.getElementById('reader');
+    readerDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button id="btn-file" class="btn-primary">📁 Subir Imagen QR</button>
+        </div>
+        <div id="file-container">
+            <input type="file" id="qr-file-input" accept="image/*" style="margin: 20px 0;">
+            <p style="color: #666; font-size: 14px;">Selecciona una imagen que contenga un código QR</p>
+        </div>
+    `;
+    
+    document.getElementById('btn-file').onclick = showFileUpload;
+    showFileUpload();
+}
+
+function startCameraScanner() {
+    const scannerContainer = document.getElementById('scanner-container');
+    const fileContainer = document.getElementById('file-container');
+    
+    if (scannerContainer) {
+        scannerContainer.innerHTML = '<div id="camera-reader"></div>';
+        scannerContainer.style.display = 'block';
+    }
+    if (fileContainer) {
+        fileContainer.style.display = 'none';
+    }
+    
+    // Actualizar botones
+    const btnCamera = document.getElementById('btn-camera');
+    const btnFile = document.getElementById('btn-file');
+    if (btnCamera) {
+        btnCamera.className = 'btn-primary';
+        btnCamera.textContent = '📷 Cámara Activa';
+    }
+    if (btnFile) {
+        btnFile.className = 'btn-secondary';
+        btnFile.textContent = '📁 Subir Imagen';
+    }
+    
+    // Inicializar escáner de cámara
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            initializeCameraScanner();
+        }).catch(() => {
+            initializeCameraScanner();
+        });
+    } else {
+        initializeCameraScanner();
+    }
+}
+
+function initializeCameraScanner() {
+    html5QrCode = new Html5Qrcode("camera-reader");
+    
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        () => {}
+    ).catch(err => {
+        console.error('Error iniciando cámara:', err);
+        showMessage('Error al iniciar cámara: ' + err.message, 'error');
+    });
+}
+
+function showFileUpload() {
+    const scannerContainer = document.getElementById('scanner-container');
+    const fileContainer = document.getElementById('file-container');
+    
+    if (scannerContainer) {
+        scannerContainer.style.display = 'none';
+    }
+    if (fileContainer) {
+        fileContainer.style.display = 'block';
+    }
+    
+    // Actualizar botones
+    const btnCamera = document.getElementById('btn-camera');
+    const btnFile = document.getElementById('btn-file');
+    if (btnCamera) {
+        btnCamera.className = 'btn-secondary';
+        btnCamera.textContent = '📷 Usar Cámara';
+    }
+    if (btnFile) {
+        btnFile.className = 'btn-primary';
+        btnFile.textContent = '📁 Archivo Activo';
+    }
+    
+    // Detener cámara si está activa
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+    }
+    
+    // Configurar input de archivo
+    const fileInput = document.getElementById('qr-file-input');
+    if (fileInput) {
+        fileInput.onchange = handleFileSelect;
+    }
+}
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    console.log('📁 Archivo seleccionado:', file.name);
+    
+    // Crear un objeto Html5Qrcode temporal para escanear archivo
+    const tempScanner = new Html5Qrcode("temp-reader");
+    
+    // Crear elemento temporal oculto
+    const tempDiv = document.createElement('div');
+    tempDiv.id = 'temp-reader';
+    tempDiv.style.display = 'none';
+    document.body.appendChild(tempDiv);
+    
+    tempScanner.scanFile(file, true)
+        .then(decodedText => {
+            console.log('✅ QR decodificado desde archivo:', decodedText);
+            // Limpiar elemento temporal
+            document.body.removeChild(tempDiv);
+            // Procesar el resultado
+            onScanSuccess(decodedText, null);
+        })
+        .catch(err => {
+            console.error('❌ Error escaneando archivo:', err);
+            document.body.removeChild(tempDiv);
+            showMessage('No se pudo leer el código QR de la imagen', 'error');
+        });
+    
+    // Limpiar input
+    event.target.value = '';
+}
+
 async function onScanSuccess(qrData, decodedResult) {
-    if (isScanning) return;
+    console.log('🔍 onScanSuccess llamado con:', qrData);
+    console.log('📊 Estado actual - isScanning:', isScanning, 'isFirstScan:', isFirstScan);
+    
+    if (isScanning) {
+        console.log('⏸️ Escaneo ya en progreso, ignorando...');
+        return;
+    }
     isScanning = true;
 
     // Prevenir cualquier comportamiento por defecto
     try {
         if (window.event) {
+            console.log('🛑 Previniendo evento por defecto');
             window.event.preventDefault();
             window.event.stopPropagation();
         }
     } catch (e) {
-        // Ignorar errores de preventDefault
+        console.log('⚠️ Error previniendo evento:', e.message);
     }
     
     // Si es el primer escaneo, agregar un delay adicional
     if (isFirstScan) {
         isFirstScan = false;
-        console.log('🔍 Primer escaneo detectado, inicializando...');
+        console.log('🔥 Primer escaneo detectado, inicializando...');
         // Pequeño delay para estabilizar el sistema
         await new Promise(resolve => setTimeout(resolve, 200));
+        console.log('✅ Delay de estabilización completado');
     }
 
     try {
@@ -1288,14 +1448,20 @@ async function onScanSuccess(qrData, decodedResult) {
         }
         
         setTimeout(() => { 
+            console.log('⏰ Liberando isScanning después de 5 segundos');
             isScanning = false;
         }, 5000); // 5 segundos de delay entre escaneos
 
     } catch (error) {
-        console.error('Error general:', error);
+        console.error('❌ Error general en onScanSuccess:', error);
         showBigAlert('Error del sistema', 'error', 'Ocurrió un error inesperado');
-        setTimeout(() => { isScanning = false; }, 5000);
+        setTimeout(() => { 
+            console.log('❌ Liberando isScanning por error');
+            isScanning = false; 
+        }, 5000);
     }
+    
+    console.log('🏁 onScanSuccess terminado');
 }
 
 // Activar modo offline manual
