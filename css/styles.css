@@ -1079,6 +1079,7 @@ button {
     align-items: center !important;
     justify-content: center !important;
     gap: 10px !important;
+    visibility: hidden !important;
 }
 
 #photo-tools.show {
@@ -1089,6 +1090,7 @@ button {
 #photo-tools.hide {
     display: none !important;
     visibility: hidden !important;
+    opacity: 0 !important;
 }
 
 #photo-tools input[type="file"] {

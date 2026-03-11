@@ -1138,8 +1138,31 @@ function startScanner() {
         btnProcessImage.onclick = processSelectedImage;
     }
     
-    // INICIAR CON CÁMARA POR DEFECTO (sin mostrar herramientas de foto)
-    startCameraScanner();
+    // NO INICIAR NADA AUTOMÁTICAMENTE - Dejar área vacía
+    const scannerContainer = document.getElementById('scanner-container');
+    const photoTools = document.getElementById('photo-tools');
+    
+    if (scannerContainer) {
+        scannerContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #666; background: #f8f9fa; border-radius: 8px; border: 2px dashed #ddd;"><h3>📱 Selecciona un modo de escaneo</h3><p>Usa los botones de arriba para activar la cámara o cargar una foto</p></div>';
+        scannerContainer.style.display = 'block';
+    }
+    if (photoTools) {
+        photoTools.className = 'scanner-controls hide';
+    }
+    
+    // Botones en estado inicial
+    const btnCamera = document.getElementById('btn-camera');
+    const btnFile = document.getElementById('btn-file');
+    if (btnCamera) {
+        btnCamera.className = 'btn-secondary';
+        btnCamera.textContent = '📷 Cámara';
+    }
+    if (btnFile) {
+        btnFile.className = 'btn-secondary';
+        btnFile.textContent = '📁 Cargar Foto';
+    }
+    
+    console.log('🚀 Escáner iniciado - Esperando selección de modo');
 }
 
 
@@ -1148,16 +1171,25 @@ function startCameraScanner() {
     const scannerContainer = document.getElementById('scanner-container');
     const photoTools = document.getElementById('photo-tools');
     
-    // MOSTRAR cámara y OCULTAR COMPLETAMENTE herramientas de foto
+    // DETENER cámara anterior si existe
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+    }
+    
+    // OCULTAR COMPLETAMENTE herramientas de foto
+    if (photoTools) {
+        photoTools.className = 'scanner-controls hide';
+        photoTools.style.display = 'none';
+        photoTools.style.visibility = 'hidden';
+    }
+    
+    // MOSTRAR cámara
     if (scannerContainer) {
         scannerContainer.innerHTML = '<div id="camera-reader"></div>';
         scannerContainer.style.display = 'block';
     }
-    if (photoTools) {
-        photoTools.className = 'scanner-controls hide';
-    }
     
-    // Actualizar botones principales
+    // Actualizar botones
     const btnCamera = document.getElementById('btn-camera');
     const btnFile = document.getElementById('btn-file');
     if (btnCamera) {
@@ -1169,18 +1201,12 @@ function startCameraScanner() {
         btnFile.textContent = '📁 Cargar Foto';
     }
     
-    console.log('✅ Modo CÁMARA activado - Herramientas de foto COMPLETAMENTE ocultas');
+    console.log('📷 Modo CÁMARA activado - Herramientas de foto OCULTAS');
     
-    // Inicializar escáner de cámara
-    if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            initializeCameraScanner();
-        }).catch(() => {
-            initializeCameraScanner();
-        });
-    } else {
+    // Inicializar escáner de cámara con delay para asegurar limpieza
+    setTimeout(() => {
         initializeCameraScanner();
-    }
+    }, 100);
 }
 
 function initializeCameraScanner() {
@@ -1201,16 +1227,29 @@ function showFileUpload() {
     const scannerContainer = document.getElementById('scanner-container');
     const photoTools = document.getElementById('photo-tools');
     
-    // OCULTAR cámara y MOSTRAR herramientas de foto
-    if (scannerContainer) {
-        scannerContainer.style.display = 'none';
-        scannerContainer.innerHTML = ''; // Limpiar contenido de cámara
-    }
-    if (photoTools) {
-        photoTools.className = 'scanner-controls show';
+    // DETENER y LIMPIAR cámara completamente
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+            console.log('📷 Cámara detenida correctamente');
+        }).catch((error) => {
+            console.log('⚠️ Error deteniendo cámara:', error);
+        });
     }
     
-    // Actualizar botones principales
+    // OCULTAR cámara
+    if (scannerContainer) {
+        scannerContainer.innerHTML = ''; // Limpiar completamente
+        scannerContainer.style.display = 'none';
+    }
+    
+    // MOSTRAR herramientas de foto
+    if (photoTools) {
+        photoTools.className = 'scanner-controls show';
+        photoTools.style.display = 'flex';
+        photoTools.style.visibility = 'visible';
+    }
+    
+    // Actualizar botones
     const btnCamera = document.getElementById('btn-camera');
     const btnFile = document.getElementById('btn-file');
     if (btnCamera) {
@@ -1228,12 +1267,13 @@ function showFileUpload() {
         btnProcessImage.onclick = processSelectedImage;
     }
     
-    // Detener cámara si está activa
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(console.error);
+    // Limpiar input de archivo
+    const fileInput = document.getElementById('qr-file-input');
+    if (fileInput) {
+        fileInput.value = '';
     }
     
-    console.log('✅ Modo CARGAR FOTO activado - Cámara oculta, herramientas VISIBLES');
+    console.log('📁 Modo CARGAR FOTO activado - Cámara DETENIDA');
 }
 
 function processSelectedImage() {
