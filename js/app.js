@@ -1341,15 +1341,29 @@ function processSelectedImage() {
     // Mostrar mensaje de procesamiento
     showMessage('Procesando imagen...', 'info');
     
-    // Usar Html5Qrcode para escanear archivo directamente
-    Html5Qrcode.scanFile(file, true)
+    // Crear un elemento temporal para el escáner de archivos
+    const tempScannerId = 'temp-file-scanner-' + Date.now();
+    const tempDiv = document.createElement('div');
+    tempDiv.id = tempScannerId;
+    tempDiv.style.display = 'none';
+    document.body.appendChild(tempDiv);
+    
+    // Crear instancia temporal de Html5Qrcode
+    const fileScanner = new Html5Qrcode(tempScannerId);
+    
+    // Escanear el archivo
+    fileScanner.scanFile(file, true)
         .then(decodedText => {
             console.log('✅ QR decodificado desde archivo:', decodedText);
+            // Limpiar el escáner temporal
+            document.body.removeChild(tempDiv);
             // Procesar el resultado directamente
             onScanSuccess(decodedText, null);
         })
         .catch(err => {
             console.error('❌ Error escaneando archivo:', err);
+            // Limpiar el escáner temporal
+            document.body.removeChild(tempDiv);
             showMessage('No se pudo leer el código QR de la imagen', 'error');
             alert('❌ No se pudo leer el código QR de la imagen. Verifica que la imagen contenga un código QR válido.');
         });
