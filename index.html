@@ -669,14 +669,14 @@
                         <ul style="color: #666; margin-bottom: 20px; text-align: left;">
                             <li><strong>Columna A:</strong> CÓDIGO (OBLIGATORIO - ej: ADM001)</li>
                             <li><strong>Columna B:</strong> C.I. (DNI/CI)</li>
-                            <li><strong>Columna C:</strong> APELLIDO_PATERNO</li>
-                            <li><strong>Columna D:</strong> APELLIDO_MATERNO (opcional)</li>
-                            <li><strong>Columna E:</strong> NOMBRES</li>
+                            <li><strong>Columna C:</strong> NOMBRES</li>
+                            <li><strong>Columna D:</strong> APELLIDO_PATERNO</li>
+                            <li><strong>Columna E:</strong> APELLIDO_MATERNO (opcional)</li>
                             <li><strong>Columna F:</strong> PERSONAL (Directorio General, Asesor Legal, etc.)</li>
                             <li><strong>Columna G:</strong> CARGO (cargo específico - OBLIGATORIO)</li>
                             <li><strong>Columna H:</strong> CELULAR (opcional)</li>
                             <li><strong>Columna I:</strong> EMAIL (opcional)</li>
-                            <li><strong>Columna J:</strong> Contraseña (ej: ADM001)</li>
+                            <li><strong>Columna J:</strong> Contraseña (por defecto usa el código único - ej: ADM001)</li>
                         </ul>
                         <input type="file" id="excel-file-personal" accept=".xlsx,.xls" style="margin-bottom: 15px;">
                         <button onclick="procesarExcelPersonal()" class="btn-success">Subir y Procesar Excel</button>

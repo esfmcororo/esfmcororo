@@ -2705,6 +2705,159 @@ async function loadPersonalCompleto() {
     });
 }
 
+async function procesarExcelPersonalInterno(file, resultadoDiv, personalAnterior = 0) {
+    console.log('Archivo seleccionado:', file.name, 'Tamaño:', file.size);
+    resultadoDiv.innerHTML = '<p style="color: blue;">📁 Leyendo archivo Excel...</p>';
+
+    try {
+        const data = await file.arrayBuffer();
+        console.log('Archivo leído, tamaño del buffer:', data.byteLength);
+        resultadoDiv.innerHTML = '<p style="color: blue;">📊 Procesando datos...</p>';
+        
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        console.log('Datos extraídos:', jsonData.length, 'filas');
+        console.log('Primeras 3 filas:', jsonData.slice(0, 3));
+
+        if (jsonData.length === 0) {
+            resultadoDiv.innerHTML = '<p style="color: red;">❌ El archivo está vacío</p>';
+            return;
+        }
+
+        // Detectar si tiene cabeceras
+        let startRow = 0;
+        const firstRow = jsonData[0];
+        if (firstRow && firstRow.some(cell => 
+            typeof cell === 'string' && 
+            (cell.toLowerCase().includes('nombre') || 
+             cell.toLowerCase().includes('dni') || 
+             cell.toLowerCase().includes('codigo'))
+        )) {
+            startRow = 1;
+            console.log('Cabeceras detectadas, iniciando desde fila 2');
+        } else {
+            console.log('Sin cabeceras, procesando desde fila 1');
+        }
+
+        let exitosos = 0;
+        let errores = 0;
+        const erroresDetalle = [];
+        const totalFilas = jsonData.length - startRow;
+        
+        resultadoDiv.innerHTML = `<p style="color: blue;">⏳ Procesando ${totalFilas} personas...</p>`;
+
+        for (let i = startRow; i < jsonData.length; i++) {
+            const fila = jsonData[i];
+            
+            // Actualizar progreso cada 10 registros
+            if ((i - startRow) % 10 === 0) {
+                const progreso = Math.round(((i - startRow) / totalFilas) * 100);
+                resultadoDiv.innerHTML = `<p style="color: blue;">⏳ Procesando... ${progreso}% (${i - startRow}/${totalFilas})</p>`;
+            }
+            
+            // Saltar filas vacías
+            if (!fila || fila.every(cell => !cell)) {
+                console.log(`Fila ${i + 1} vacía, saltando`);
+                continue;
+            }
+            
+            try {
+                const personal = {
+                    codigo_unico: fila[0] ? fila[0].toString().trim() : '',
+                    dni: fila[1] ? fila[1].toString().trim() : '',
+                    nombre: fila[2] ? fila[2].toString().toUpperCase().trim() : '',
+                    apellido_paterno: fila[3] ? fila[3].toString().toUpperCase().trim() : '',
+                    apellido_materno: (fila[4] && fila[4].toString().trim()) ? fila[4].toString().toUpperCase().trim() : 'SIN DATO',
+                    personal: fila[5] ? fila[5].toString().toUpperCase().trim() : '',
+                    cargo: fila[6] ? fila[6].toString().toUpperCase().trim() : '',
+                    celular: fila[7] ? fila[7].toString().trim() : null,
+                    email: (fila[8] && fila[8].toString().trim()) ? fila[8].toString().toLowerCase().trim() : null,
+                    password: fila[9] ? fila[9].toString().trim() : (fila[0] ? fila[0].toString().trim() : 'personal123')
+                };
+                
+                // Validar campos obligatorios
+                if (!personal.codigo_unico || !personal.dni || !personal.nombre || !personal.apellido_paterno || !personal.personal || !personal.cargo) {
+                    errores++;
+                    const camposFaltantes = [];
+                    if (!personal.codigo_unico) camposFaltantes.push('código');
+                    if (!personal.dni) camposFaltantes.push('DNI');
+                    if (!personal.nombre) camposFaltantes.push('nombre');
+                    if (!personal.apellido_paterno) camposFaltantes.push('apellido paterno');
+                    if (!personal.personal) camposFaltantes.push('tipo de personal');
+                    if (!personal.cargo) camposFaltantes.push('cargo');
+                    
+                    const errorMsg = `Fila ${i + 1} (${personal.codigo_unico || 'Sin código'}): Faltan campos obligatorios: ${camposFaltantes.join(', ')}`;
+                    erroresDetalle.push(errorMsg);
+                    console.log(`❌ ${errorMsg}`);
+                    console.log('Datos de la fila:', personal);
+                    continue;
+                }
+                
+                console.log(`Insertando personal ${exitosos + 1}:`, personal.codigo_unico, personal.nombre);
+                
+                const { error } = await tursodb.from('administrativos').insert(personal);
+
+                if (error) {
+                    errores++;
+                    erroresDetalle.push(`Fila ${i + 1}: ${error.message}`);
+                    console.error(`Error insertando fila ${i + 1}:`, error);
+                } else {
+                    exitosos++;
+                }
+            } catch (err) {
+                errores++;
+                erroresDetalle.push(`Fila ${i + 1}: ${err.message}`);
+                console.error(`Error procesando fila ${i + 1}:`, err);
+            }
+        }
+
+        let resultado = `<h4>📊 Proceso completado:</h4>`;
+        resultado += `<p style="color: green; font-size: 18px;">✅ Personal cargado: <strong>${exitosos}</strong></p>`;
+        if (errores > 0) {
+            resultado += `<p style="color: red; font-size: 18px;">❌ Errores encontrados: <strong>${errores}</strong></p>`;
+            resultado += `<p style="color: orange; font-size: 14px;">⚠️ Revisa los datos y corrige los errores antes de continuar</p>`;
+        }
+        
+        if (erroresDetalle.length > 0) {
+            resultado += `<details style="margin-top: 15px;"><summary style="cursor: pointer; font-weight: bold;">👁️ Ver detalles de errores (${errores})</summary><ul style="margin-top: 10px;">`;
+            erroresDetalle.slice(0, 20).forEach(error => {
+                resultado += `<li style="color: red; margin: 5px 0;">${error}</li>`;
+            });
+            if (erroresDetalle.length > 20) {
+                resultado += `<li style="color: orange;">... y ${erroresDetalle.length - 20} errores más</li>`;
+            }
+            resultado += `</ul></details>`;
+        }
+
+        resultadoDiv.innerHTML = resultado;
+        console.log('Proceso completado:', { exitosos, errores });
+        
+        if (exitosos > 0) {
+            setTimeout(() => {
+                if (errores > 0) {
+                    alert(`⚠️ Proceso completado con errores\n✅ ${exitosos} personas cargadas\n❌ ${errores} errores encontrados\n\nRevisa los detalles en pantalla y corrige los datos faltantes.`);
+                } else {
+                    const mensaje = personalAnterior > 0 
+                        ? `🔄 ¡Base de datos actualizada!\n❌ ${personalAnterior} personas anteriores eliminadas\n✅ ${exitosos} nuevas personas cargadas\n❌ 0 errores`
+                        : `🎉 ¡Proceso completado exitosamente!\n✅ ${exitosos} personas cargadas\n❌ 0 errores`;
+                    alert(mensaje);
+                }
+            }, 1000);
+        } else if (errores > 0) {
+            setTimeout(() => {
+                alert(`❌ No se pudo cargar ninguna persona\n${errores} errores encontrados\n\nRevisa el formato del archivo Excel.`);
+            }, 1000);
+        }
+
+    } catch (error) {
+        console.error('Error general:', error);
+        resultadoDiv.innerHTML = `<p style="color: red;">❌ Error procesando archivo: ${error.message}</p>`;
+        alert('Error: ' + error.message);
+    }
+}
+
 async function procesarExcelPersonal() {
     const fileInput = document.getElementById('excel-file-personal');
     const resultadoDiv = document.getElementById('resultado-carga-personal');
@@ -2757,9 +2910,9 @@ async function procesarExcelPersonal() {
                 const personal = {
                     codigo_unico: fila[0] ? fila[0].toString().trim() : '',
                     dni: fila[1] ? fila[1].toString().trim() : '',
-                    apellido_paterno: fila[2] ? fila[2].toString().toUpperCase().trim() : '',
-                    apellido_materno: (fila[3] && fila[3].toString().trim()) ? fila[3].toString().toUpperCase().trim() : 'SIN DATO',
-                    nombre: fila[4] ? fila[4].toString().toUpperCase().trim() : '',
+                    nombre: fila[2] ? fila[2].toString().toUpperCase().trim() : '',
+                    apellido_paterno: fila[3] ? fila[3].toString().toUpperCase().trim() : '',
+                    apellido_materno: (fila[4] && fila[4].toString().trim()) ? fila[4].toString().toUpperCase().trim() : 'SIN DATO',
                     personal: fila[5] ? fila[5].toString().toUpperCase().trim() : '',
                     cargo: fila[6] ? fila[6].toString().toUpperCase().trim() : '',
                     celular: fila[7] ? fila[7].toString().trim() : null,
@@ -2769,7 +2922,15 @@ async function procesarExcelPersonal() {
                 
                 if (!personal.codigo_unico || !personal.dni || !personal.nombre || !personal.apellido_paterno || !personal.personal || !personal.cargo) {
                     errores++;
-                    erroresDetalle.push(`Fila ${i + 1}: Faltan campos obligatorios`);
+                    const camposFaltantes = [];
+                    if (!personal.codigo_unico) camposFaltantes.push('código');
+                    if (!personal.dni) camposFaltantes.push('DNI');
+                    if (!personal.nombre) camposFaltantes.push('nombre');
+                    if (!personal.apellido_paterno) camposFaltantes.push('apellido paterno');
+                    if (!personal.personal) camposFaltantes.push('tipo de personal');
+                    if (!personal.cargo) camposFaltantes.push('cargo');
+                    
+                    erroresDetalle.push(`Fila ${i + 1}: Faltan campos obligatorios: ${camposFaltantes.join(', ')}`);
                     continue;
                 }
                 
