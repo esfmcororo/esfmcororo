@@ -1,5 +1,6 @@
 let html5QrCode = null;
 let isScanning = false;
+let isFirstScan = true; // Nueva variable para controlar el primer escaneo
 let currentUser = null;
 let currentProfile = null;
 let currentEventId = null;
@@ -1124,32 +1125,53 @@ async function validarEventoActivo(eventoId) {
 }
 
 function startScanner() {
-    html5QrCode = new Html5Qrcode("reader");
+    // Resetear flag de primer escaneo
+    isFirstScan = true;
     
-    Html5Qrcode.getCameras().then(cameras => {
-        if (cameras && cameras.length > 0) {
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                onScanSuccess,
-                () => {}
-            ).catch(err => {
-                showMessage('Error al iniciar cámara', 'error');
-            });
-        } else {
-            showMessage('No se detectó cámara', 'warning');
-        }
-    }).catch(err => {
-        showMessage('No se puede acceder a la cámara', 'error');
-    });
+    // Agregar un pequeño delay para asegurar que todo esté inicializado
+    setTimeout(() => {
+        html5QrCode = new Html5Qrcode("reader");
+        
+        Html5Qrcode.getCameras().then(cameras => {
+            if (cameras && cameras.length > 0) {
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    onScanSuccess,
+                    () => {}
+                ).catch(err => {
+                    showMessage('Error al iniciar cámara', 'error');
+                });
+            } else {
+                showMessage('No se detectó cámara', 'warning');
+            }
+        }).catch(err => {
+            showMessage('No se puede acceder a la cámara', 'error');
+        });
+    }, 100); // 100ms delay
 }
 
-async function onScanSuccess(qrData) {
+async function onScanSuccess(qrData, decodedResult) {
     if (isScanning) return;
     isScanning = true;
 
-    // Prevenir recarga de página
-    event?.preventDefault?.();
+    // Prevenir cualquier comportamiento por defecto
+    try {
+        if (window.event) {
+            window.event.preventDefault();
+            window.event.stopPropagation();
+        }
+    } catch (e) {
+        // Ignorar errores de preventDefault
+    }
+    
+    // Si es el primer escaneo, agregar un delay adicional
+    if (isFirstScan) {
+        isFirstScan = false;
+        console.log('🔍 Primer escaneo detectado, inicializando...');
+        // Pequeño delay para estabilizar el sistema
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
 
     try {
         // Extraer código único del QR (último campo después del |)
