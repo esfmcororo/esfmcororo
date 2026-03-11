@@ -179,14 +179,16 @@
             <div id="offline-indicator" class="offline-indicator" style="display: none;"></div>
             
             <div class="container">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <button id="btn-camera" class="btn-primary" style="margin-right: 10px;">📷 Usar Cámara</button>
-                    <button id="btn-file" class="btn-secondary">📁 Subir Imagen</button>
+                <!-- Controles de escaneo -->
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin: 15px 0; padding: 8px; background: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6;">
+                    <button id="btn-camera" class="btn-primary" style="padding: 6px 12px; font-size: 13px;">📷 Cámara</button>
+                    <button id="btn-file" class="btn-secondary" style="padding: 6px 12px; font-size: 13px;">📁 Imagen</button>
                 </div>
+                
                 <div id="scanner-container"></div>
                 <div id="file-container" style="display: none;">
-                    <input type="file" id="qr-file-input" accept="image/*" style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 14px;">Selecciona una imagen que contenga un código QR</p>
+                    <input type="file" id="qr-file-input" accept="image/*" style="margin: 15px 0; width: 100%; max-width: 300px;">
+                    <p style="color: #666; font-size: 13px; text-align: center;">Selecciona una imagen que contenga un código QR</p>
                 </div>
                 <div id="reader"></div>
                 <div id="mensaje"></div>
