@@ -1148,13 +1148,13 @@ function startCameraScanner() {
     const scannerContainer = document.getElementById('scanner-container');
     const photoTools = document.getElementById('photo-tools');
     
-    // MOSTRAR cámara y OCULTAR herramientas de foto
+    // MOSTRAR cámara y OCULTAR COMPLETAMENTE herramientas de foto
     if (scannerContainer) {
         scannerContainer.innerHTML = '<div id="camera-reader"></div>';
         scannerContainer.style.display = 'block';
     }
     if (photoTools) {
-        photoTools.style.display = 'none';
+        photoTools.className = 'scanner-controls hide';
     }
     
     // Actualizar botones principales
@@ -1169,7 +1169,7 @@ function startCameraScanner() {
         btnFile.textContent = '📁 Cargar Foto';
     }
     
-    console.log('✅ Modo CÁMARA activado - Herramientas de foto ocultas');
+    console.log('✅ Modo CÁMARA activado - Herramientas de foto COMPLETAMENTE ocultas');
     
     // Inicializar escáner de cámara
     if (html5QrCode) {
@@ -1207,7 +1207,7 @@ function showFileUpload() {
         scannerContainer.innerHTML = ''; // Limpiar contenido de cámara
     }
     if (photoTools) {
-        photoTools.style.display = 'flex';
+        photoTools.className = 'scanner-controls show';
     }
     
     // Actualizar botones principales
@@ -1233,7 +1233,7 @@ function showFileUpload() {
         html5QrCode.stop().catch(console.error);
     }
     
-    console.log('✅ Modo CARGAR FOTO activado - Cámara oculta');
+    console.log('✅ Modo CARGAR FOTO activado - Cámara oculta, herramientas VISIBLES');
 }
 
 function processSelectedImage() {

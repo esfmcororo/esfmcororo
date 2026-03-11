@@ -1074,11 +1074,21 @@ button {
     padding: 15px !important;
     border-radius: 8px !important;
     margin: 10px 0 !important;
-    display: flex !important;
+    display: none !important; /* Oculto por defecto */
     flex-wrap: wrap !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 10px !important;
+}
+
+#photo-tools.show {
+    display: flex !important;
+    visibility: visible !important;
+}
+
+#photo-tools.hide {
+    display: none !important;
+    visibility: hidden !important;
 }
 
 #photo-tools input[type="file"] {
