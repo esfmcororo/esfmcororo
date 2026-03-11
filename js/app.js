@@ -2042,6 +2042,28 @@ async function generarQRsGrupoDirecto(especialidad, anio) {
         return;
     }
 
+    // Actualizar el botón de descarga con información contextual
+    const headerContainer = document.querySelector('#generar-qr-section .container');
+    const btnZip = headerContainer.querySelector('.btn-success');
+    if (btnZip) {
+        // Crear div de información si no existe
+        let infoDiv = headerContainer.querySelector('.qr-info');
+        if (!infoDiv) {
+            infoDiv = document.createElement('div');
+            infoDiv.className = 'qr-info';
+            infoDiv.style.cssText = 'background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
+            btnZip.parentNode.insertBefore(infoDiv, btnZip.nextSibling);
+        }
+        infoDiv.innerHTML = `
+            <p style="margin: 0; color: #333; font-size: 16px; font-weight: bold;">
+                🎓 ${especialidad}
+            </p>
+            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
+                📅 Año: ${anio} | 👥 Total: ${estudiantesFiltrados.length} estudiantes
+            </p>
+        `;
+    }
+
     container.innerHTML = '';
     
     estudiantesFiltrados.forEach((est, index) => {
@@ -3245,6 +3267,28 @@ async function generarQRsPersonalDirecto(tipoPersonal) {
     }
     
     const personalFiltrado = result.rows;
+
+    // Actualizar el botón de descarga con información contextual
+    const headerContainer = document.querySelector('#generar-qr-section .container');
+    const btnZip = headerContainer.querySelector('.btn-success');
+    if (btnZip) {
+        // Crear div de información si no existe
+        let infoDiv = headerContainer.querySelector('.qr-info');
+        if (!infoDiv) {
+            infoDiv = document.createElement('div');
+            infoDiv.className = 'qr-info';
+            infoDiv.style.cssText = 'background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
+            btnZip.parentNode.insertBefore(infoDiv, btnZip.nextSibling);
+        }
+        infoDiv.innerHTML = `
+            <p style="margin: 0; color: #333; font-size: 16px; font-weight: bold;">
+                👔 ${tipoPersonal}
+            </p>
+            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
+                👥 Total: ${personalFiltrado.length} personas
+            </p>
+        `;
+    }
 
     container.innerHTML = '';
     
