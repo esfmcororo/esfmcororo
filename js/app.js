@@ -1138,14 +1138,14 @@ function startScanner() {
         btnProcessImage.onclick = processSelectedImage;
     }
     
-    // ESTADO INICIAL: NO MOSTRAR NADA
+    // ESTADO INICIAL: TODO OCULTO
     const scannerContainer = document.getElementById('scanner-container');
     const photoTools = document.getElementById('photo-tools');
     
-    // Limpiar todo
+    // Ocultar todo al inicio
     if (scannerContainer) {
-        scannerContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #666; background: #f8f9fa; border-radius: 8px; border: 2px dashed #ddd;"><h3>📱 Selecciona un modo de escaneo</h3><p>Usa los botones de arriba para activar la cámara o cargar una foto</p></div>';
-        scannerContainer.style.display = 'block';
+        scannerContainer.innerHTML = '';
+        scannerContainer.style.display = 'none';
     }
     if (photoTools) {
         photoTools.className = 'scanner-controls hide';
