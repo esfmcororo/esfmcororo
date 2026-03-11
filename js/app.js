@@ -1138,19 +1138,28 @@ function startScanner() {
         btnProcessImage.onclick = processSelectedImage;
     }
     
-    // NO INICIAR NADA AUTOMÁTICAMENTE - Dejar área vacía
+    // ESTADO INICIAL: NO MOSTRAR NADA
     const scannerContainer = document.getElementById('scanner-container');
     const photoTools = document.getElementById('photo-tools');
     
+    // Limpiar todo
     if (scannerContainer) {
         scannerContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #666; background: #f8f9fa; border-radius: 8px; border: 2px dashed #ddd;"><h3>📱 Selecciona un modo de escaneo</h3><p>Usa los botones de arriba para activar la cámara o cargar una foto</p></div>';
         scannerContainer.style.display = 'block';
     }
     if (photoTools) {
         photoTools.className = 'scanner-controls hide';
+        photoTools.style.display = 'none';
+        photoTools.style.visibility = 'hidden';
     }
     
-    // Botones en estado inicial
+    // Asegurar que no hay cámara activa
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+        html5QrCode = null;
+    }
+    
+    // Botones en estado inicial (ambos inactivos)
     const btnCamera = document.getElementById('btn-camera');
     const btnFile = document.getElementById('btn-file');
     if (btnCamera) {
@@ -1162,171 +1171,154 @@ function startScanner() {
         btnFile.textContent = '📁 Cargar Foto';
     }
     
-    console.log('🚀 Escáner iniciado - Esperando selección de modo');
+    console.log('🚀 Escáner iniciado - Estado limpio, esperando selección del usuario');
 }
 
 
 
 function startCameraScanner() {
+    console.log('📷 === INICIANDO MODO CÁMARA ===');
+    
     const scannerContainer = document.getElementById('scanner-container');
     const photoTools = document.getElementById('photo-tools');
     
-    console.log('📷 Iniciando modo cámara...');
-    
-    // PASO 1: DETENER cámara anterior si existe
-    if (html5QrCode && html5QrCode.isScanning) {
+    // PASO 1: Detener cámara anterior si existe
+    if (html5QrCode) {
         console.log('🛑 Deteniendo cámara anterior...');
-        html5QrCode.stop().then(() => {
-            console.log('✅ Cámara anterior detenida');
-            continuarActivacionCamara();
-        }).catch((error) => {
-            console.log('⚠️ Error deteniendo cámara anterior:', error);
-            continuarActivacionCamara();
-        });
-    } else {
-        continuarActivacionCamara();
+        if (html5QrCode.isScanning) {
+            html5QrCode.stop().catch(console.error);
+        }
+        html5QrCode = null;
+        console.log('✅ Cámara anterior limpiada');
     }
     
-    function continuarActivacionCamara() {
-        // PASO 2: OCULTAR COMPLETAMENTE herramientas de foto
-        if (photoTools) {
-            photoTools.className = 'scanner-controls hide';
-            photoTools.style.display = 'none';
-            photoTools.style.visibility = 'hidden';
-            console.log('🙈 Herramientas de foto ocultas');
-        }
-        
-        // PASO 3: PREPARAR área de cámara
-        if (scannerContainer) {
-            scannerContainer.innerHTML = '<div id="camera-reader" style="width: 100%; max-width: 500px; margin: 0 auto;"></div>';
-            scannerContainer.style.display = 'block';
-            console.log('📺 Área de cámara preparada');
-        }
-        
-        // PASO 4: Actualizar botones
-        const btnCamera = document.getElementById('btn-camera');
-        const btnFile = document.getElementById('btn-file');
-        if (btnCamera) {
-            btnCamera.className = 'btn-primary';
-            btnCamera.textContent = '📷 Cámara Activa';
-        }
-        if (btnFile) {
-            btnFile.className = 'btn-secondary';
-            btnFile.textContent = '📁 Cargar Foto';
-        }
-        
-        // PASO 5: Inicializar cámara con delay
-        setTimeout(() => {
-            console.log('🚀 Inicializando nueva cámara...');
-            initializeCameraScanner();
-        }, 200);
+    // PASO 2: Ocultar herramientas de foto
+    if (photoTools) {
+        photoTools.style.display = 'none';
+        photoTools.style.visibility = 'hidden';
+        console.log('🙈 Herramientas de foto ocultas');
     }
+    
+    // PASO 3: Preparar área de cámara
+    if (scannerContainer) {
+        scannerContainer.innerHTML = '<div id="camera-reader" style="width: 100%; max-width: 500px; margin: 0 auto; min-height: 300px; background: #000; border-radius: 8px;"></div>';
+        scannerContainer.style.display = 'block';
+        console.log('📺 Área de cámara preparada');
+    }
+    
+    // PASO 4: Actualizar botones
+    const btnCamera = document.getElementById('btn-camera');
+    const btnFile = document.getElementById('btn-file');
+    if (btnCamera) {
+        btnCamera.className = 'btn-primary';
+        btnCamera.textContent = '📷 Cámara Activa';
+    }
+    if (btnFile) {
+        btnFile.className = 'btn-secondary';
+        btnFile.textContent = '📁 Cargar Foto';
+    }
+    
+    // PASO 5: Inicializar cámara con delay
+    setTimeout(() => {
+        console.log('🚀 Inicializando nueva cámara...');
+        
+        // Verificar que el elemento existe
+        const cameraReader = document.getElementById('camera-reader');
+        if (!cameraReader) {
+            console.error('❌ Elemento camera-reader no encontrado');
+            return;
+        }
+        
+        // Crear nueva instancia de Html5Qrcode
+        html5QrCode = new Html5Qrcode("camera-reader");
+        
+        // Configurar y iniciar cámara
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+        };
+        
+        html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            onScanSuccess,
+            (errorMessage) => {
+                // Silenciar errores de escaneo normales
+            }
+        ).then(() => {
+            console.log('✅ Cámara iniciada correctamente');
+        }).catch(err => {
+            console.error('❌ Error iniciando cámara:', err);
+            if (cameraReader) {
+                cameraReader.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #dc3545; background: #f8d7da; border-radius: 8px;">
+                        <h4>❌ Error de Cámara</h4>
+                        <p>No se pudo acceder a la cámara.</p>
+                        <small>Verifica los permisos del navegador</small>
+                    </div>
+                `;
+            }
+        });
+    }, 300);
 }
 
-function initializeCameraScanner() {
-    // Limpiar cualquier instancia anterior
-    if (html5QrCode) {
-        html5QrCode = null;
-    }
-    
-    // Crear nueva instancia
-    html5QrCode = new Html5Qrcode("camera-reader");
-    
-    // Configurar y iniciar cámara
-    const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-    };
-    
-    html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        onScanSuccess,
-        (errorMessage) => {
-            // Silenciar errores de escaneo normales
-        }
-    ).then(() => {
-        console.log('✅ Cámara iniciada correctamente');
-    }).catch(err => {
-        console.error('❌ Error iniciando cámara:', err);
-        const cameraReader = document.getElementById('camera-reader');
-        if (cameraReader) {
-            cameraReader.innerHTML = `
-                <div style="text-align: center; padding: 20px; color: #dc3545; background: #f8d7da; border-radius: 8px;">
-                    <h4>❌ Error de Cámara</h4>
-                    <p>No se pudo acceder a la cámara. Verifica los permisos.</p>
-                    <small>Error: ${err.message}</small>
-                </div>
-            `;
-        }
-    });
-}
+
 
 function showFileUpload() {
+    console.log('📁 === INICIANDO MODO CARGAR FOTO ===');
+    
     const scannerContainer = document.getElementById('scanner-container');
     const photoTools = document.getElementById('photo-tools');
     
-    console.log('📁 Iniciando modo cargar foto...');
-    
-    // PASO 1: DETENER y LIMPIAR cámara completamente
-    if (html5QrCode && html5QrCode.isScanning) {
+    // PASO 1: Detener y limpiar cámara
+    if (html5QrCode) {
         console.log('🛑 Deteniendo cámara...');
-        html5QrCode.stop().then(() => {
-            console.log('✅ Cámara detenida correctamente');
-            html5QrCode = null; // Limpiar referencia
-            continuarActivacionArchivos();
-        }).catch((error) => {
-            console.log('⚠️ Error deteniendo cámara:', error);
-            html5QrCode = null; // Limpiar referencia de todas formas
-            continuarActivacionArchivos();
-        });
-    } else {
-        continuarActivacionArchivos();
+        if (html5QrCode.isScanning) {
+            html5QrCode.stop().catch(console.error);
+        }
+        html5QrCode = null;
+        console.log('✅ Cámara detenida y limpiada');
     }
     
-    function continuarActivacionArchivos() {
-        // PASO 2: OCULTAR cámara
-        if (scannerContainer) {
-            scannerContainer.innerHTML = ''; // Limpiar completamente
-            scannerContainer.style.display = 'none';
-            console.log('🙈 Área de cámara oculta y limpiada');
-        }
-        
-        // PASO 3: MOSTRAR herramientas de foto
-        if (photoTools) {
-            photoTools.className = 'scanner-controls show';
-            photoTools.style.display = 'flex';
-            photoTools.style.visibility = 'visible';
-            console.log('📱 Herramientas de foto mostradas');
-        }
-        
-        // PASO 4: Actualizar botones
-        const btnCamera = document.getElementById('btn-camera');
-        const btnFile = document.getElementById('btn-file');
-        if (btnCamera) {
-            btnCamera.className = 'btn-secondary';
-            btnCamera.textContent = '📷 Cámara';
-        }
-        if (btnFile) {
-            btnFile.className = 'btn-primary';
-            btnFile.textContent = '📁 Cargar Foto Activo';
-        }
-        
-        // PASO 5: Configurar botón de procesar imagen
-        const btnProcessImage = document.getElementById('btn-process-image');
-        if (btnProcessImage) {
-            btnProcessImage.onclick = processSelectedImage;
-        }
-        
-        // PASO 6: Limpiar input de archivo
-        const fileInput = document.getElementById('qr-file-input');
-        if (fileInput) {
-            fileInput.value = '';
-        }
-        
-        console.log('📁 Modo CARGAR FOTO activado - Cámara DETENIDA');
+    // PASO 2: Ocultar área de cámara
+    if (scannerContainer) {
+        scannerContainer.innerHTML = '';
+        scannerContainer.style.display = 'none';
+        console.log('🙈 Área de cámara oculta');
     }
+    
+    // PASO 3: Mostrar herramientas de foto
+    if (photoTools) {
+        photoTools.style.display = 'flex';
+        photoTools.style.visibility = 'visible';
+        console.log('📱 Herramientas de foto mostradas');
+    }
+    
+    // PASO 4: Actualizar botones
+    const btnCamera = document.getElementById('btn-camera');
+    const btnFile = document.getElementById('btn-file');
+    if (btnCamera) {
+        btnCamera.className = 'btn-secondary';
+        btnCamera.textContent = '📷 Cámara';
+    }
+    if (btnFile) {
+        btnFile.className = 'btn-primary';
+        btnFile.textContent = '📁 Cargar Foto Activo';
+    }
+    
+    // PASO 5: Configurar botón de procesar
+    const btnProcessImage = document.getElementById('btn-process-image');
+    if (btnProcessImage) {
+        btnProcessImage.onclick = processSelectedImage;
+    }
+    
+    // PASO 6: Limpiar input de archivo
+    const fileInput = document.getElementById('qr-file-input');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    
+    console.log('📁 Modo CARGAR FOTO activado');
 }
 
 function processSelectedImage() {
