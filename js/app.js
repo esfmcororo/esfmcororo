@@ -500,7 +500,7 @@ function showAsistenciaModule() {
 }
 
 function showBibliotecaModule() {
-    alert('Módulo de Biblioteca en desarrollo. Próximamente disponible.');
+    window.location.href = 'biblioteca/index.html';
 }
 
 function showGestionUsuarios() {
@@ -3817,6 +3817,15 @@ function showGestionUsuarios() {
 // Sistema inicializado al cargar
 window.addEventListener('DOMContentLoaded', async function() {
     await tursodb.initializeData();
+    
+    // Si viene de un módulo externo (ej: biblioteca), mostrar dashboard
+    if (window._showDashboardOnLoad) {
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        if (user) {
+            currentUser = user;
+            showDashboard();
+        }
+    }
 });
 
 

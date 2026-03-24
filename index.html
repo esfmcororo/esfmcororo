@@ -819,6 +819,15 @@
     <script>
         // Máscara para formato 24 horas en campos de hora
         document.addEventListener('DOMContentLoaded', function() {
+            // Si viene de un módulo externo, mostrar dashboard
+            if (window.location.hash === '#dashboard') {
+                const user = JSON.parse(localStorage.getItem('currentUser'));
+                if (user) {
+                    history.replaceState(null, '', window.location.pathname);
+                    // showDashboard se llamará después de cargar app.js
+                    window._showDashboardOnLoad = true;
+                }
+            }
             const horaInputs = ['evento-hora-inicio', 'evento-hora-fin', 'edit-evento-hora-inicio', 'edit-evento-hora-fin'];
             
             horaInputs.forEach(id => {
