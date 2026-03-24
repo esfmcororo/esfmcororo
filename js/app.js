@@ -400,6 +400,20 @@ async function auditarAsistencias() {
 
 // ========== AUTENTICACIÓN CON SUPABASE AUTH ==========
 
+function togglePassword() {
+    const input = document.getElementById('password');
+    const btn = document.querySelector('.toggle-password');
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+        btn.style.opacity = '1';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+        btn.style.opacity = '0.5';
+    }
+}
+
 async function login() {
     const emailOrCi = document.getElementById('email').value;
     const password = document.getElementById('password').value;

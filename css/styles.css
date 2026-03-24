@@ -281,8 +281,38 @@ h3 { color: #2c3e50; margin-bottom: 15px; }
     }
 }
 
-input {
-    width: 100%;
+.password-wrapper {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.password-wrapper input {
+    margin-bottom: 0;
+    padding-right: 44px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    width: auto;
+    line-height: 1;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.toggle-password:hover {
+    opacity: 1;
+    transform: translateY(-50%);
+}
+
+
     padding: 12px;
     margin-bottom: 15px;
     border: 1px solid #ddd;
