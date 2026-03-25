@@ -316,6 +316,13 @@ function actualizarContadoresAct(registros) {
     document.getElementById('act-cnt-ausente').textContent = registros.filter(r => r.estado === 'AUSENTE').length;
 }
 
+function cancelarLista() {
+    document.getElementById('paso-lista').style.display = 'none';
+    document.getElementById('paso-seleccion').style.display = 'block';
+    document.querySelectorAll('.registros-hoy').forEach(el => el.style.display = 'block');
+    estadosEstudiantes = {};
+}
+
 function volverSeleccion() {
     document.getElementById('paso-actualizar').style.display = 'none';
     document.getElementById('paso-seleccion').style.display = 'block';

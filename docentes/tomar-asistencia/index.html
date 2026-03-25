@@ -72,9 +72,12 @@
 
                 <div id="lista-estudiantes"></div>
 
-                <button onclick="guardarAsistencia()" class="btn-primary btn-full btn-guardar">
-                    💾 Guardar Asistencia
-                </button>
+                <div class="botones-accion">
+                    <button onclick="cancelarLista()" class="btn-secondary">✕ Cancelar</button>
+                    <button onclick="guardarAsistencia()" class="btn-primary btn-guardar">
+                        💾 Guardar Asistencia
+                    </button>
+                </div>
             </div>
 
             <!-- PASO 3: Actualizar registro existente -->
@@ -96,9 +99,12 @@
 
                 <div id="lista-actualizar"></div>
 
-                <button onclick="volverSeleccion()" class="btn-secondary btn-full" style="margin-top:15px;">
-                    ← Nueva asistencia
-                </button>
+                <div class="botones-accion">
+                    <button onclick="volverSeleccion()" class="btn-secondary">✕ Cancelar</button>
+                    <button onclick="volverSeleccion()" class="btn-primary">
+                        ← Nueva asistencia
+                    </button>
+                </div>
             </div>
 
         </div>
