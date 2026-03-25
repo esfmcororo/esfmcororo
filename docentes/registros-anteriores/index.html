@@ -12,7 +12,7 @@
         <div class="header">
             <h1><span class="title-line1">ESFM "Simón Bolívar"</span> <span class="title-line2">CORORO</span></h1>
             <div class="header-right">
-                <button onclick="volverDocentes()" class="btn-secondary">← Volver</button>
+                <button id="btn-volver" onclick="volverDocentes()" class="btn-secondary">← Volver</button>
                 <div class="user-dropdown" id="user-dropdown-ra">
                     <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-ra')">
                         <span class="user-display-name"></span>
@@ -27,24 +27,51 @@
         </div>
 
         <div class="container">
-            <div class="card">
-                <h2>📅 Registros Anteriores</h2>
-                <p class="subtitle">Selecciona una fecha para ver los registros</p>
-                <div class="form-group">
-                    <label>Fecha</label>
-                    <input type="date" id="input-fecha">
+
+            <!-- VISTA 1: Buscar por fecha -->
+            <div id="vista-buscar">
+                <div class="card">
+                    <h2>📅 Registros Anteriores</h2>
+                    <p class="subtitle">Selecciona una fecha para ver los registros</p>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="input-fecha">
+                    </div>
+                    <button onclick="buscarRegistros()" class="btn-primary btn-full">🔍 Buscar</button>
                 </div>
-                <button onclick="buscarRegistros()" class="btn-primary btn-full">🔍 Buscar</button>
+
+                <div id="registros-dia" style="display:none;">
+                    <h3 id="titulo-fecha" style="color:white; margin-bottom:12px;"></h3>
+                    <div id="lista-registros"></div>
+                </div>
+
+                <div id="sin-resultados" style="display:none;" class="card">
+                    <p style="text-align:center; color:#666;">📭 No hay registros para esta fecha</p>
+                </div>
             </div>
 
-            <div id="registros-dia" style="display:none;">
-                <h3 id="titulo-fecha" style="color:white; margin-bottom:12px;"></h3>
-                <div id="lista-registros"></div>
+            <!-- VISTA 2: Detalle de un registro -->
+            <div id="vista-detalle" style="display:none;">
+                <div class="lista-header">
+                    <div>
+                        <h2 id="det-titulo"></h2>
+                        <p id="det-info" class="subtitle"></p>
+                    </div>
+                    <div class="contadores">
+                        <span class="contador presente">✅ <span id="det-cnt-presente">0</span></span>
+                        <span class="contador retraso">⏰ <span id="det-cnt-retraso">0</span></span>
+                        <span class="contador licencia">📋 <span id="det-cnt-licencia">0</span></span>
+                        <span class="contador ausente">❌ <span id="det-cnt-ausente">0</span></span>
+                    </div>
+                </div>
+
+                <div id="lista-detalle"></div>
+
+                <div class="botones-accion">
+                    <button onclick="volverABuscar()" class="btn-secondary">← Volver</button>
+                </div>
             </div>
 
-            <div id="sin-resultados" style="display:none;" class="card">
-                <p style="text-align:center; color:#666;">📭 No hay registros para esta fecha</p>
-            </div>
         </div>
     </div>
 

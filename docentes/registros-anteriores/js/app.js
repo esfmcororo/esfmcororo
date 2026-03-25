@@ -1,7 +1,8 @@
-// ========== REGISTROS ANTERIORES - LÓGICA ==========
+// ========== REGISTROS ANTERIORES ==========
 
 let currentUser = null;
 let fechaBuscada = '';
+let registroActual = { especialidad: '', anio: '', hora: '', fecha: '' };
 
 window.addEventListener('DOMContentLoaded', async function () {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -32,7 +33,7 @@ function volverDocentes() {
     window.location.href = '../index.html';
 }
 
-// ========== BUSCAR REGISTROS ==========
+// ========== VISTA 1: BUSCAR ==========
 async function buscarRegistros() {
     const fecha = document.getElementById('input-fecha').value;
     if (!fecha) { alert('Selecciona una fecha'); return; }
@@ -41,7 +42,6 @@ async function buscarRegistros() {
     document.getElementById('registros-dia').style.display = 'none';
     document.getElementById('sin-resultados').style.display = 'none';
 
-    // Traer todos los registros agrupados por especialidad+anio+hora (cada llamada de lista es única)
     const result = await tursodb.query(`
         SELECT especialidad, anio_formacion, hora_registro,
             SUM(CASE WHEN estado = 'PRESENTE' THEN 1 ELSE 0 END) as presentes,
@@ -70,23 +70,23 @@ async function buscarRegistros() {
         const div = document.createElement('div');
         div.className = 'registro-card';
         div.innerHTML = `
-            <div class="registro-card-header">
+            <div class="registro-card-info">
                 <div>
                     <strong>🎓 ${r.especialidad} - Año ${r.anio_formacion}</strong>
                     <small>🕒 Registrado a las ${r.hora_registro}</small>
+                    <div class="mini-contadores">
+                        <span class="mini-cnt presente">✅ ${r.presentes}</span>
+                        <span class="mini-cnt retraso">⏰ ${r.retrasos}</span>
+                        <span class="mini-cnt licencia">📋 ${r.licencias}</span>
+                        <span class="mini-cnt ausente">❌ ${r.ausentes}</span>
+                        <span class="mini-cnt total">👥 ${r.total}</span>
+                    </div>
                 </div>
-                <div class="mini-contadores">
-                    <span class="mini-cnt presente">✅ ${r.presentes}</span>
-                    <span class="mini-cnt retraso">⏰ ${r.retrasos}</span>
-                    <span class="mini-cnt licencia">📋 ${r.licencias}</span>
-                    <span class="mini-cnt ausente">❌ ${r.ausentes}</span>
-                    <span class="mini-cnt total">👥 ${r.total}</span>
+                <div class="registro-card-btns">
+                    <button onclick="verDetalle('${r.especialidad}', '${r.anio_formacion}', '${r.hora_registro}', '${fecha}', 'ver')" class="btn-ver">👁 Ver</button>
+                    <button onclick="verDetalle('${r.especialidad}', '${r.anio_formacion}', '${r.hora_registro}', '${fecha}', 'actualizar')" class="btn-actualizar">✏️ Actualizar</button>
                 </div>
             </div>
-            <div class="lista-inline" id="lista-${r.especialidad.replace(/\s/g,'-')}-${r.anio_formacion}-${r.hora_registro.replace(':','')}"></div>
-            <button class="btn-toggle-lista" onclick="toggleDetalle(this, '${r.especialidad}', '${r.anio_formacion}', '${r.hora_registro}', '${fecha}')">
-                Ver lista ▼
-            </button>
         `;
         container.appendChild(div);
     });
@@ -94,18 +94,9 @@ async function buscarRegistros() {
     document.getElementById('registros-dia').style.display = 'block';
 }
 
-// ========== TOGGLE DETALLE INLINE ==========
-async function toggleDetalle(btn, especialidad, anio, hora, fecha) {
-    const listId = `lista-${especialidad.replace(/\s/g,'-')}-${anio}-${hora.replace(':','')}`;
-    const container = document.getElementById(listId);
-
-    if (container.style.display === 'block') {
-        container.style.display = 'none';
-        btn.textContent = 'Ver lista ▼';
-        return;
-    }
-
-    btn.textContent = 'Cargando...';
+// ========== VISTA 2: DETALLE ==========
+async function verDetalle(especialidad, anio, hora, fecha, modo) {
+    registroActual = { especialidad, anio, hora, fecha, modo };
 
     const result = await tursodb.query(`
         SELECT ae.*, e.nombre, e.apellido_paterno, e.apellido_materno, e.codigo_unico
@@ -115,82 +106,99 @@ async function toggleDetalle(btn, especialidad, anio, hora, fecha) {
         ORDER BY e.apellido_paterno, e.nombre
     `, [especialidad, anio, hora, fecha, String(currentUser.id)]);
 
-    if (!result.rows || result.rows.length === 0) {
-        container.innerHTML = '<p style="padding:10px; color:#666;">Sin datos</p>';
-    } else {
-        renderListaInline(container, result.rows, especialidad, anio, hora, fecha);
-    }
+    if (!result.rows || result.rows.length === 0) return;
 
-    container.style.display = 'block';
-    btn.textContent = 'Ocultar lista ▲';
+    // Cambiar vista
+    document.getElementById('vista-buscar').style.display = 'none';
+    document.getElementById('vista-detalle').style.display = 'block';
+
+    // Cambiar botón volver del header
+    document.getElementById('btn-volver').onclick = volverABuscar;
+
+    const [anioF, mes, dia] = fecha.split('-');
+    document.getElementById('det-titulo').textContent = `${especialidad} - Año ${anio}`;
+    document.getElementById('det-info').textContent = `📅 ${dia}/${mes}/${anioF} | 🕒 ${hora} | ${modo === 'actualizar' ? '✏️ Modo actualización' : '👁 Solo lectura'}`;
+
+    renderDetalle(result.rows, modo);
+    actualizarContadores(result.rows);
 }
 
-function renderListaInline(container, registros, especialidad, anio, hora, fecha) {
+function renderDetalle(registros, modo) {
+    const container = document.getElementById('lista-detalle');
     container.innerHTML = '';
+
     registros.forEach(reg => {
         const div = document.createElement('div');
-        div.className = `est-row-inline ${reg.estado !== 'PRESENTE' ? 'ausente' : ''}`;
-        div.id = `reg-${reg.id}`;
+        const esAusente = reg.estado !== 'PRESENTE';
+        div.className = `estudiante-row ${esAusente ? 'ausente' : ''}`;
+        div.id = `det-${reg.id}`;
 
         const apellidoM = reg.apellido_materno !== 'SIN DATO' ? reg.apellido_materno : '';
         const nombre = `${reg.apellido_paterno} ${apellidoM} ${reg.nombre}`.trim();
         const horaAct = reg.hora_actualizacion ? ` · ✏️ ${reg.fecha_actualizacion} ${reg.hora_actualizacion}` : '';
 
-        if (reg.estado === 'PRESENTE') {
-            div.innerHTML = `
-                <div class="est-info">
-                    <strong>${nombre}</strong>
-                    <small>${reg.codigo_unico}</small>
-                </div>
-                <span class="estado-badge presente">✅ PRESENTE</span>
-            `;
-        } else {
-            div.innerHTML = `
-                <div class="est-info">
-                    <strong>${nombre}</strong>
-                    <small>${reg.codigo_unico}${horaAct}</small>
-                </div>
+        const badgeMap = {
+            'PRESENTE': '<span class="estado-badge presente">✅ PRESENTE</span>',
+            'AUSENTE':  '<span class="estado-badge ausente">❌ AUSENTE</span>',
+            'RETRASO':  '<span class="estado-badge retraso">⏰ RETRASO</span>',
+            'LICENCIA': '<span class="estado-badge licencia">📋 LICENCIA</span>'
+        };
+
+        // En modo ver: solo badge. En modo actualizar: botones solo para no-presentes
+        let accion = badgeMap[reg.estado] || badgeMap['AUSENTE'];
+        if (modo === 'actualizar' && reg.estado !== 'PRESENTE') {
+            accion = `
                 <div class="estados-update">
-                    <button onclick="actualizarEstado('${reg.id}', 'AUSENTE', '${especialidad}', '${anio}', '${hora}', '${fecha}')"
-                        class="btn-estado ${reg.estado === 'AUSENTE' ? 'activo ausente-btn' : ''}">❌ Ausente</button>
-                    <button onclick="actualizarEstado('${reg.id}', 'RETRASO', '${especialidad}', '${anio}', '${hora}', '${fecha}')"
-                        class="btn-estado ${reg.estado === 'RETRASO' ? 'activo retraso-btn' : ''}">⏰ Retraso</button>
-                    <button onclick="actualizarEstado('${reg.id}', 'LICENCIA', '${especialidad}', '${anio}', '${hora}', '${fecha}')"
-                        class="btn-estado ${reg.estado === 'LICENCIA' ? 'activo licencia-btn' : ''}">📋 Licencia</button>
-                </div>
-            `;
+                    <button onclick="actualizarEstado('${reg.id}', 'AUSENTE')"
+                        class="btn-estado ${reg.estado === 'AUSENTE' ? 'activo ausente-btn' : ''}">❌</button>
+                    <button onclick="actualizarEstado('${reg.id}', 'RETRASO')"
+                        class="btn-estado ${reg.estado === 'RETRASO' ? 'activo retraso-btn' : ''}">⏰</button>
+                    <button onclick="actualizarEstado('${reg.id}', 'LICENCIA')"
+                        class="btn-estado ${reg.estado === 'LICENCIA' ? 'activo licencia-btn' : ''}">📋</button>
+                </div>`;
         }
+
+        div.innerHTML = `
+            <div class="est-info">
+                <strong>${nombre}</strong>
+                <small>${reg.codigo_unico}${horaAct}</small>
+            </div>
+            ${accion}
+        `;
         container.appendChild(div);
     });
 }
 
-async function actualizarEstado(registroId, nuevoEstado, especialidad, anio, hora, fecha) {
+async function actualizarEstado(registroId, nuevoEstado) {
     const ahora = new Date();
-    const horaAct = ahora.toLocaleTimeString('es-BO', {hour:'2-digit', minute:'2-digit', hour12:false});
-    const fechaAct = ahora.toISOString().split('T')[0];
+    const hora = ahora.toLocaleTimeString('es-BO', {hour:'2-digit', minute:'2-digit', hour12:false});
+    const fecha = ahora.toISOString().split('T')[0];
 
     await tursodb.query(`
         UPDATE asistencia_estudiantes
         SET estado = ?, hora_actualizacion = ?, fecha_actualizacion = ?
         WHERE id = ?
-    `, [nuevoEstado, horaAct, fechaAct, registroId]);
+    `, [nuevoEstado, hora, fecha, registroId]);
 
-    // Recargar solo esa lista inline
-    const listId = `lista-${especialidad.replace(/\s/g,'-')}-${anio}-${hora.replace(':','')}`;
-    const container = document.getElementById(listId);
-
-    const result = await tursodb.query(`
-        SELECT ae.*, e.nombre, e.apellido_paterno, e.apellido_materno, e.codigo_unico
-        FROM asistencia_estudiantes ae
-        JOIN estudiantes e ON ae.estudiante_id = e.id
-        WHERE ae.especialidad = ? AND ae.anio_formacion = ? AND ae.hora_registro = ? AND ae.fecha = ? AND ae.docente_id = ?
-        ORDER BY e.apellido_paterno, e.nombre
-    `, [especialidad, anio, hora, fecha, String(currentUser.id)]);
-
-    renderListaInline(container, result.rows, especialidad, anio, hora, fecha);
-    actualizarContadoresCard(result.rows, especialidad, anio, hora);
+    // Recargar solo la vista de detalle
+    await verDetalle(
+        registroActual.especialidad,
+        registroActual.anio,
+        registroActual.hora,
+        registroActual.fecha,
+        registroActual.modo
+    );
 }
 
-function actualizarContadoresCard(registros, especialidad, anio, hora) {
-    // No recargar todo, los contadores se actualizan al recargar la lista inline
+function actualizarContadores(registros) {
+    document.getElementById('det-cnt-presente').textContent = registros.filter(r => r.estado === 'PRESENTE').length;
+    document.getElementById('det-cnt-retraso').textContent  = registros.filter(r => r.estado === 'RETRASO').length;
+    document.getElementById('det-cnt-licencia').textContent = registros.filter(r => r.estado === 'LICENCIA').length;
+    document.getElementById('det-cnt-ausente').textContent  = registros.filter(r => r.estado === 'AUSENTE').length;
+}
+
+function volverABuscar() {
+    document.getElementById('vista-detalle').style.display = 'none';
+    document.getElementById('vista-buscar').style.display = 'block';
+    document.getElementById('btn-volver').onclick = volverDocentes;
 }
