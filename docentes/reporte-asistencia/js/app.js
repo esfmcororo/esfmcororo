@@ -81,7 +81,7 @@ async function cargarMaterias() {
     );
 
     const sel = document.getElementById('sel-materia');
-    sel.innerHTML = '<option value="">-- Selecciona materia --</option><option value="TODAS">📋 Todas las materias</option>';
+    sel.innerHTML = '<option value="">-- Selecciona materia --</option>';
     (result.rows || []).forEach(m => {
         sel.innerHTML += `<option value="${m.nombre}">${m.nombre}</option>`;
     });
