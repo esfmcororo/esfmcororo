@@ -1689,19 +1689,7 @@ window.addEventListener('DOMContentLoaded', function() {
     loadOfflineQueue();
     loadEstudiantesCache();
     startAutoSync();
-    
-    // Actualizar cache de estudiantes al iniciar (si hay conexión)
     updateEstudiantesCache();
-    
-    // Mostrar estadísticas de latencia cada 30 segundos (solo en desarrollo)
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        setInterval(showLatencyStats, 30000);
-    }
-    
-    console.log('🚀 Sistema Adaptativo de Latencia Inicializado');
-    console.log(`   • Tiempo óptimo: ${OPTIMAL_RESPONSE_TIME}s`);
-    console.log(`   • Umbral crítico: ${CRITICAL_THRESHOLD}s`);
-    console.log(`   • Umbral offline: ${OFFLINE_THRESHOLD}s`);
 });
 
 function formatearCampoOpcional(valor, valorPorDefecto = '') {
@@ -3831,14 +3819,10 @@ function showGestionUsuarios() {
 // Sistema inicializado al cargar
 window.addEventListener('DOMContentLoaded', async function() {
     await tursodb.initializeData();
-    
-    // Si viene de un módulo externo (ej: biblioteca), mostrar dashboard
-    if (window._showDashboardOnLoad) {
-        const user = JSON.parse(localStorage.getItem('currentUser'));
-        if (user) {
-            currentUser = user;
-            showDashboard();
-        }
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (user) {
+        currentUser = user;
+        showDashboard();
     }
 });
 
