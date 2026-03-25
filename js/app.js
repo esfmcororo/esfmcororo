@@ -1684,13 +1684,7 @@ function addToLocalAsistenciasList(persona, tipo = 'estudiante') {
     listEl.insertBefore(item, listEl.firstChild);
 }
 
-// Inicializar sistema offline al cargar la página
-window.addEventListener('DOMContentLoaded', function() {
-    loadOfflineQueue();
-    loadEstudiantesCache();
-    startAutoSync();
-    updateEstudiantesCache();
-});
+
 
 function formatearCampoOpcional(valor, valorPorDefecto = '') {
     if (!valor || valor === 'SIN DATO' || valor === 'Sin DNI' || valor === 'Sin celular' || valor === 'Sin email' || valor === 'N/A') {
@@ -3815,9 +3809,12 @@ function showGestionUsuarios() {
 }
 
 
-// Función para verificar y crear admin si no existe
 // Sistema inicializado al cargar
 window.addEventListener('DOMContentLoaded', async function() {
+    loadOfflineQueue();
+    loadEstudiantesCache();
+    startAutoSync();
+    updateEstudiantesCache();
     await tursodb.initializeData();
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (user) {
