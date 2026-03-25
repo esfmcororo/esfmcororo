@@ -103,19 +103,36 @@ async function cargarMaterias() {
     renderMaterias(result.rows);
 }
 
-function renderMaterias(materias) {
+async function renderMaterias(materias) {
     const container = document.getElementById('mat-lista');
+    const especialidad = document.getElementById('mat-especialidad').value;
+    const anio = document.getElementById('mat-anio').value;
     container.innerHTML = '';
-    materias.forEach(m => {
+
+    for (const m of materias) {
+        const registros = await tursodb.query(
+            `SELECT COUNT(*) as total FROM asistencia_estudiantes WHERE materia = ? AND especialidad = ? AND anio_formacion = ?`,
+            [m.nombre, especialidad, anio]
+        );
+        const total = parseInt(registros.rows?.[0]?.total || 0);
+        const tieneRegistros = total > 0;
+
         const div = document.createElement('div');
         div.className = 'materia-item';
         div.id = `mat-${m.id}`;
         div.innerHTML = `
-            <span class="materia-nombre">📖 ${m.nombre}</span>
-            <button onclick="eliminarMateria('${m.id}', '${m.nombre}')" class="btn-danger btn-sm">✕ Eliminar</button>
+            <div>
+                <span class="materia-nombre">📖 ${m.nombre}</span>
+                ${tieneRegistros ? `<small style="color:#28a745; display:block; margin-top:3px;">✅ ${total} registro${total !== 1 ? 's' : ''} de asistencia</small>` : '<small style="color:#999; display:block; margin-top:3px;">Sin registros</small>'}
+            </div>
+            <button onclick="eliminarMateria('${m.id}', '${m.nombre.replace(/'/g, "\\'")}')"
+                class="btn-danger btn-sm"
+                ${tieneRegistros ? 'disabled title="Tiene registros de asistencia"' : ''}>
+                ✕ Eliminar
+            </button>
         `;
         container.appendChild(div);
-    });
+    }
 }
 
 async function agregarMateria() {
@@ -152,7 +169,23 @@ document.addEventListener('keydown', function(e) {
 });
 
 async function eliminarMateria(id, nombre) {
-    if (!confirm(`¿Eliminar la materia "${nombre}"?`)) return;
+    // Verificar si tiene registros de asistencia
+    const especialidad = document.getElementById('mat-especialidad').value;
+    const anio = document.getElementById('mat-anio').value;
+
+    const registros = await tursodb.query(
+        `SELECT COUNT(*) as total FROM asistencia_estudiantes WHERE materia = ? AND especialidad = ? AND anio_formacion = ?`,
+        [nombre, especialidad, anio]
+    );
+
+    const total = parseInt(registros.rows?.[0]?.total || 0);
+
+    if (total > 0) {
+        alert(`⚠️ No se puede eliminar "${nombre}"\n\nTiene ${total} registro${total !== 1 ? 's' : ''} de asistencia asociado${total !== 1 ? 's' : ''}.\n\nElimina primero los registros de asistencia de esta materia.`);
+        return;
+    }
+
+    if (!confirm(`¿Eliminar la materia "${nombre}"?\n\nNo tiene registros de asistencia asociados.`)) return;
     await tursodb.query(`DELETE FROM materias WHERE id = ?`, [id]);
     await cargarMaterias();
 }
