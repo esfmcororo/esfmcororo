@@ -14,12 +14,12 @@
             <div class="header-right">
                 <button onclick="volverDashboard()" class="btn-secondary">← Volver</button>
                 <div class="user-dropdown" id="user-dropdown-biblioteca">
-                    <button class="user-dropdown-btn" onclick="toggleDropdown()">
-                        <span id="user-nombre"></span>
+                    <button class="user-dropdown-btn" onclick="toggleUserDropdown('user-dropdown-biblioteca')">
+                        <span class="user-display-name"></span>
                         <span>▼</span>
                     </button>
                     <div class="user-dropdown-content">
-                        <p><strong>Rol:</strong> <span id="user-rol"></span></p>
+                        <p><strong>Rol:</strong> <span class="dropdown-rol"></span></p>
                         <button onclick="cerrarSesion()" class="btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar Sesión</button>
                     </div>
                 </div>

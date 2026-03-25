@@ -143,8 +143,8 @@ body {
 }
 
 .user-dropdown-btn {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     padding: 8px 15px;
     border-radius: 6px;
     cursor: pointer;
@@ -154,10 +154,13 @@ body {
     font-size: 14px;
     color: white;
     transition: all 0.3s;
+    backdrop-filter: blur(5px);
 }
 
 .user-dropdown-btn:hover {
-    background: rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
 }
 
 .user-dropdown-content {
@@ -170,9 +173,9 @@ body {
     border: 1px solid #ddd;
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    min-width: 200px;
+    min-width: 220px;
     z-index: 1000;
-    padding: 10px;
+    padding-bottom: 10px;
 }
 
 .user-dropdown.active .user-dropdown-content {
@@ -180,30 +183,37 @@ body {
 }
 
 .user-dropdown-content p {
-    margin: 0 0 5px 0;
+    margin: 0;
+    padding: 10px 15px;
     color: #333;
     font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.user-dropdown-content p:last-of-type {
+    border-bottom: none;
 }
 
 .user-dropdown-content strong {
     color: #007bff;
+    display: block;
+    margin-bottom: 3px;
 }
 
-.user-dropdown-content .btn-secondary {
+.user-dropdown-content button {
     background: #dc3545;
     color: white;
     border: none;
-    padding: 8px;
+    padding: 10px;
     border-radius: 6px;
     cursor: pointer;
     font-weight: bold;
-    width: 100%;
-    margin-top: 5px;
+    transition: all 0.3s;
 }
 
-.user-dropdown-content .btn-secondary:hover {
+.user-dropdown-content button:hover {
     background: #c82333;
-    transform: none;
+    transform: translateY(-2px);
 }
 
 

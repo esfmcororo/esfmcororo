@@ -6,13 +6,15 @@ window.addEventListener('DOMContentLoaded', async function () {
         window.location.href = '../index.html';
         return;
     }
-    document.getElementById('user-nombre').textContent = user.nombre;
-    document.getElementById('user-rol').textContent = user.rol.toUpperCase();
+    // Rellenar nombre y rol en el dropdown
+    document.querySelectorAll('.user-display-name').forEach(el => el.textContent = user.nombre);
+    document.querySelectorAll('.dropdown-rol').forEach(el => el.textContent = user.rol.toUpperCase());
     await tursodb.initializeData();
 });
 
-function toggleDropdown() {
-    document.getElementById('user-dropdown-biblioteca').classList.toggle('active');
+function toggleUserDropdown(id) {
+    const dropdown = document.getElementById(id);
+    if (dropdown) dropdown.classList.toggle('active');
 }
 
 document.addEventListener('click', function(e) {
