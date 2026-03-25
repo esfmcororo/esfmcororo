@@ -324,6 +324,17 @@ class TursoDB {
         `);
 
         await this.query(`ALTER TABLE asistencia_estudiantes ADD COLUMN fecha_actualizacion TEXT`).catch(() => {});
+        await this.query(`ALTER TABLE asistencia_estudiantes ADD COLUMN materia TEXT`).catch(() => {});
+
+        await this.query(`
+            CREATE TABLE IF NOT EXISTS materias (
+                id TEXT PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                especialidad TEXT NOT NULL,
+                anio_formacion TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
         await this.query(`
             CREATE TABLE IF NOT EXISTS asistencia_estudiantes (

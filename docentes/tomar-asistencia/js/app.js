@@ -68,7 +68,35 @@ async function cargarAnios() {
 
     grupoAnio.style.display = 'block';
     selAnio.onchange = () => {
-        btnCargar.style.display = selAnio.value ? 'block' : 'none';
+        if (selAnio.value) {
+            cargarMaterias();
+        } else {
+            document.getElementById('grupo-materia').style.display = 'none';
+            document.getElementById('btn-cargar').style.display = 'none';
+        }
+    };
+}
+
+async function cargarMaterias() {
+    const especialidad = document.getElementById('sel-especialidad').value;
+    const anio = document.getElementById('sel-anio').value;
+    const grupoMateria = document.getElementById('grupo-materia');
+    const btnCargar = document.getElementById('btn-cargar');
+    const selMateria = document.getElementById('sel-materia');
+
+    const result = await tursodb.query(
+        `SELECT * FROM materias WHERE especialidad = ? AND anio_formacion = ? ORDER BY nombre`,
+        [especialidad, anio]
+    );
+
+    selMateria.innerHTML = '<option value="">-- Selecciona materia --</option>';
+    (result.rows || []).forEach(m => {
+        selMateria.innerHTML += `<option value="${m.nombre}">${m.nombre}</option>`;
+    });
+
+    grupoMateria.style.display = 'block';
+    selMateria.onchange = () => {
+        btnCargar.style.display = selMateria.value ? 'block' : 'none';
     };
 }
 
@@ -76,7 +104,8 @@ async function cargarAnios() {
 async function cargarLista() {
     const especialidad = document.getElementById('sel-especialidad').value;
     const anio = document.getElementById('sel-anio').value;
-    if (!especialidad || !anio) { alert('Selecciona especialidad y año'); return; }
+    const materia = document.getElementById('sel-materia').value;
+    if (!especialidad || !anio || !materia) { alert('Selecciona especialidad, año y materia'); return; }
 
     const result = await tursodb.query(
         `SELECT * FROM estudiantes WHERE especialidad = ? AND anio_formacion = ? ORDER BY apellido_paterno, nombre`,
@@ -101,7 +130,7 @@ async function cargarLista() {
     const ahora = new Date();
     document.getElementById('lista-titulo').textContent = `${especialidad} - ${anio}`;
     document.getElementById('lista-fecha').textContent =
-        `📅 ${ahora.toLocaleDateString('es-BO')} | 🕒 ${ahora.toLocaleTimeString('es-BO', {hour:'2-digit', minute:'2-digit'})}`;
+        `📅 ${ahora.toLocaleDateString('es-BO')} | 🕒 ${ahora.toLocaleTimeString('es-BO', {hour:'2-digit', minute:'2-digit'})} | 📖 ${materia}`;
 
     renderLista(result.rows);
     actualizarContadores();
@@ -166,6 +195,7 @@ function actualizarContadores() {
 async function guardarAsistencia() {
     const especialidad = document.getElementById('sel-especialidad').value;
     const anio = document.getElementById('sel-anio').value;
+    const materia = document.getElementById('sel-materia').value;
     const ahora = new Date();
     const fecha = ahora.toISOString().split('T')[0];
     const hora = ahora.toLocaleTimeString('es-BO', {hour:'2-digit', minute:'2-digit', hour12:false});
@@ -176,8 +206,8 @@ async function guardarAsistencia() {
     // Verificar si ya existe un registro de este grupo hoy
     const existe = await tursodb.query(`
         SELECT COUNT(*) as total FROM asistencia_estudiantes
-        WHERE docente_id = ? AND especialidad = ? AND anio_formacion = ? AND fecha = ?
-    `, [String(currentUser.id), especialidad, anio, fecha]);
+        WHERE docente_id = ? AND especialidad = ? AND anio_formacion = ? AND materia = ? AND fecha = ?
+    `, [String(currentUser.id), especialidad, anio, materia, fecha]);
 
     if (existe.rows && parseInt(existe.rows[0].total) > 0) {
         const confirmar = confirm(`⚠️ Ya existe un registro de asistencia para este grupo hoy.\n\n¿Deseas guardar un nuevo registro de todas formas?`);
@@ -192,9 +222,9 @@ async function guardarAsistencia() {
             const id = Date.now().toString() + Math.random().toString(36).substr(2,5);
             await tursodb.query(`
                 INSERT INTO asistencia_estudiantes 
-                (id, estudiante_id, docente_id, especialidad, anio_formacion, estado, fecha, hora_registro)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `, [id, estudianteId, String(currentUser.id), especialidad, anio, estado, fecha, hora]);
+                (id, estudiante_id, docente_id, especialidad, anio_formacion, materia, estado, fecha, hora_registro)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [id, estudianteId, String(currentUser.id), especialidad, anio, materia, estado, fecha, hora]);
         }
         alert(`✅ Asistencia guardada correctamente\n${presentes} presentes | ${total - presentes} ausentes`);
         // Volver al paso de selección limpio
@@ -203,7 +233,9 @@ async function guardarAsistencia() {
         document.getElementById('sel-especialidad').value = '';
         document.getElementById('sel-anio').value = '';
         document.getElementById('grupo-anio').style.display = 'none';
+        document.getElementById('grupo-materia').style.display = 'none';
         document.getElementById('btn-cargar').style.display = 'none';
+        document.getElementById('sel-materia').value = '';
         document.querySelectorAll('.registros-hoy').forEach(el => el.remove());
         await verificarRegistroHoy();
     } catch (error) {
@@ -215,7 +247,7 @@ async function guardarAsistencia() {
 async function verificarRegistroHoy() {
     const fecha = new Date().toISOString().split('T')[0];
     const result = await tursodb.query(`
-        SELECT DISTINCT especialidad, anio_formacion, hora_registro
+        SELECT DISTINCT especialidad, anio_formacion, materia, hora_registro
         FROM asistencia_estudiantes
         WHERE docente_id = ? AND fecha = ?
         ORDER BY hora_registro DESC
@@ -233,7 +265,7 @@ function mostrarRegistrosHoy(registros, fecha) {
     registros.forEach(r => {
         html += `
             <div class="registro-item" onclick="cargarActualizacion('${r.especialidad}', '${r.anio_formacion}', '${fecha}')">
-                <span>🎓 ${r.especialidad} - ${r.anio_formacion}</span>
+                <span>🎓 ${r.especialidad} - ${r.anio_formacion} | 📖 ${r.materia || ''}</span>
                 <span class="hora-reg">🕒 ${r.hora_registro} <span class="btn-edit">Actualizar →</span></span>
             </div>`;
     });
