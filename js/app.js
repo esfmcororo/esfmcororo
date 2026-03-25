@@ -496,8 +496,10 @@ document.addEventListener('click', function(event) {
 });
 
 function showAsistenciaModule() {
-    sessionStorage.setItem('fromModule', '1');
-    window.location.href = 'asistencia/index.html';
+    hideAllSections();
+    document.getElementById('asistencia-module-section').classList.add('active');
+    updateAllUserDropdowns();
+    loadEventos();
 }
 
 function showBibliotecaModule() {
