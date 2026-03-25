@@ -137,7 +137,76 @@ body {
     margin-bottom: 20px;
 }
 
-/* Responsive */
+/* User dropdown */
+.user-dropdown {
+    position: relative;
+}
+
+.user-dropdown-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: white;
+    transition: all 0.3s;
+}
+
+.user-dropdown-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.user-dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 5px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 200px;
+    z-index: 1000;
+    padding: 10px;
+}
+
+.user-dropdown.active .user-dropdown-content {
+    display: block;
+}
+
+.user-dropdown-content p {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 13px;
+}
+
+.user-dropdown-content strong {
+    color: #007bff;
+}
+
+.user-dropdown-content .btn-secondary {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    margin-top: 5px;
+}
+
+.user-dropdown-content .btn-secondary:hover {
+    background: #c82333;
+    transform: none;
+}
+
+
 @media (max-width: 600px) {
     .header h1 { font-size: 1rem; }
     .title-line2 { font-size: 1.1rem; }
