@@ -43,7 +43,7 @@ async function buscarRegistros() {
     document.getElementById('sin-resultados').style.display = 'none';
 
     const result = await tursodb.query(`
-        SELECT especialidad, anio_formacion, hora_registro,
+        SELECT especialidad, anio_formacion, hora_registro, materia,
             SUM(CASE WHEN estado = 'PRESENTE' THEN 1 ELSE 0 END) as presentes,
             SUM(CASE WHEN estado = 'AUSENTE'  THEN 1 ELSE 0 END) as ausentes,
             SUM(CASE WHEN estado = 'RETRASO'  THEN 1 ELSE 0 END) as retrasos,
@@ -51,7 +51,7 @@ async function buscarRegistros() {
             COUNT(*) as total
         FROM asistencia_estudiantes
         WHERE docente_id = ? AND fecha = ?
-        GROUP BY especialidad, anio_formacion, hora_registro
+        GROUP BY especialidad, anio_formacion, hora_registro, materia
         ORDER BY hora_registro DESC
     `, [String(currentUser.id), fecha]);
 
@@ -73,7 +73,7 @@ async function buscarRegistros() {
             <div class="registro-card-info">
                 <div>
                     <strong>🎓 ${r.especialidad} - Año ${r.anio_formacion}</strong>
-                    <small>🕒 Registrado a las ${r.hora_registro}</small>
+                    <small>📖 ${r.materia || 'Sin materia'} | 🕒 ${r.hora_registro}</small>
                     <div class="mini-contadores">
                         <span class="mini-cnt presente">P ${r.presentes}</span>
                         <span class="mini-cnt retraso">R ${r.retrasos}</span>
@@ -117,7 +117,7 @@ async function verDetalle(especialidad, anio, hora, fecha, modo) {
 
     const [anioF, mes, dia] = fecha.split('-');
     document.getElementById('det-titulo').textContent = `${especialidad} - Año ${anio}`;
-    document.getElementById('det-info').textContent = `📅 ${dia}/${mes}/${anioF} | 🕒 ${hora} | ${modo === 'actualizar' ? '✏️ Modo actualización' : '👁 Solo lectura'}`;
+    document.getElementById('det-info').textContent = `📖 ${result.rows[0].materia || 'Sin materia'} | 📅 ${dia}/${mes}/${anioF} | 🕒 ${hora} | ${modo === 'actualizar' ? 'Modo actualización' : 'Solo lectura'}`;
 
     renderDetalle(result.rows, modo);
     actualizarContadores(result.rows);
