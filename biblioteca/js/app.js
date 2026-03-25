@@ -11,5 +11,5 @@ window.addEventListener('DOMContentLoaded', async function () {
 });
 
 function volverDashboard() {
-    window.location.href = '../index.html';
+    history.back();
 }

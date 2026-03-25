@@ -7,14 +7,6 @@
     <title>ESFM - CORORO</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
     <link rel="stylesheet" href="css/styles.css?v=2026030861">
-    <script>
-        // Ejecutar antes de renderizar: ocultar login si hay sesión activa
-        if (localStorage.getItem('currentUser')) {
-            document.addEventListener('DOMContentLoaded', function() {
-                document.getElementById('login-section').classList.remove('active');
-            });
-        }
-    </script>
 </head>
 <body>
     <div id="app">
