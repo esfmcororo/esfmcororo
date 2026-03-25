@@ -60,7 +60,8 @@ class TursoDB {
                     rows: result.rows?.map(row => {
                         const obj = {};
                         result.cols.forEach((col, i) => {
-                            obj[col.name] = row[i]?.value || row[i];
+                            const cell = row[i];
+                            obj[col.name] = (cell && cell.type !== 'null') ? (cell.value !== undefined ? cell.value : cell) : null;
                         });
                         return obj;
                     }) || [],
@@ -321,6 +322,8 @@ class TursoDB {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        await this.query(`ALTER TABLE asistencia_estudiantes ADD COLUMN fecha_actualizacion TEXT`).catch(() => {});
 
         await this.query(`
             CREATE TABLE IF NOT EXISTS asistencia_estudiantes (

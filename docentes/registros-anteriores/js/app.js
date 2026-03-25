@@ -135,7 +135,9 @@ function renderDetalle(registros, modo) {
 
         const apellidoM = reg.apellido_materno !== 'SIN DATO' ? reg.apellido_materno : '';
         const nombre = `${reg.apellido_paterno} ${apellidoM} ${reg.nombre}`.trim();
-        const horaAct = reg.hora_actualizacion ? ` · ✏️ ${reg.fecha_actualizacion} ${reg.hora_actualizacion}` : '';
+        const horaAct = reg.hora_actualizacion 
+            ? ` · Act: ${reg.fecha_actualizacion || ''} ${reg.hora_actualizacion}`.trim()
+            : '';
 
         const badgeMap = {
             'PRESENTE': '<span class="estado-badge presente">P Presente</span>',
