@@ -226,15 +226,13 @@ async function guardarAsistencia() {
     }
 
     try {
-        for (const [estudianteId, estado] of Object.entries(estadosEstudiantes)) {
-            const id = Date.now().toString() + Math.random().toString(36).substr(2,5);
-            await tursodb.query(`
-                INSERT INTO asistencia_estudiantes 
-                (id, estudiante_id, docente_id, especialidad, anio_formacion, materia, estado, fecha, hora_registro)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `, [id, estudianteId, String(currentUser.id), especialidad, anio, materia, estado, fecha, hora]);
-        }
-        alert(`✅ Asistencia guardada correctamente\n${presentes} presentes | ${total - presentes} ausentes`);
+        // Batch: todos los INSERTs en 1 sola peticion HTTP
+        const queries = Object.entries(estadosEstudiantes).map(([estId, est]) => ({
+            sql: "INSERT INTO asistencia_estudiantes (id, estudiante_id, docente_id, especialidad, anio_formacion, materia, estado, fecha, hora_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params: [Date.now().toString() + Math.random().toString(36).substr(2,5), estId, String(currentUser.id), especialidad, anio, materia, est, fecha, hora]
+        }));
+        await tursodb.batchQuery(queries);
+        alert("Asistencia guardada: " + presentes + " presentes | " + (total - presentes) + " ausentes");
         // Volver al paso de selección limpio
         document.getElementById('paso-lista').style.display = 'none';
         document.getElementById('paso-seleccion').style.display = 'block';

@@ -46,7 +46,7 @@ class TursoDB {
                         type: 'execute',
                         stmt: {
                             sql: sql,
-                            args: params.map(p => ({ type: 'text', value: String(p) }))
+                            args: params.map(p => ({ type: 'text', value: String(p === null ? '' : p) }))
                         }
                     }]
                 })
@@ -73,6 +73,33 @@ class TursoDB {
         } catch (error) {
             console.error('Turso query error:', error);
             return { rows: [], error };
+        }
+    }
+
+    // Ejecutar multiples queries en una sola peticion HTTP
+    async batchQuery(queries) {
+        try {
+            const requests = queries.map(({ sql, params = [] }) => ({
+                type: 'execute',
+                stmt: {
+                    sql,
+                    args: params.map(p => ({ type: 'text', value: String(p === null ? '' : p) }))
+                }
+            }));
+
+            const response = await fetch(`${this.dbUrl}/v2/pipeline`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ requests })
+            });
+
+            const data = await response.json();
+            return { error: data.results?.some(r => r.type === 'error') ? data : null };
+        } catch (error) {
+            return { error };
         }
     }
     
