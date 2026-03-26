@@ -1,3 +1,10 @@
+function fechaLocal(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dia = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dia}`;
+}
+
 // ========== REGISTROS ANTERIORES ==========
 
 let currentUser = null;
@@ -11,7 +18,7 @@ window.addEventListener('DOMContentLoaded', async function () {
     currentUser = user;
     document.querySelectorAll('.user-display-name').forEach(el => el.textContent = user.nombre);
     document.querySelectorAll('.dropdown-rol').forEach(el => el.textContent = user.rol.toUpperCase());
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = fechaLocal();
     document.getElementById('input-fecha').value = hoy;
     document.getElementById('input-fecha').max = hoy;
     await tursodb.initializeData();
@@ -202,7 +209,7 @@ async function guardarCambios() {
     }
     const ahora = new Date();
     const hora = ahora.toLocaleTimeString('es-BO', {hour:'2-digit', minute:'2-digit', hour12:false});
-    const fechaAct = ahora.toISOString().split('T')[0];
+    const fechaAct = fechaLocal(ahora);
 
     for (const [registroId, nuevoEstado] of Object.entries(cambiosPendientes)) {
         await tursodb.query(`

@@ -1,3 +1,10 @@
+function fechaLocal(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dia = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dia}`;
+}
+
 // ========== TOMAR ASISTENCIA - LÓGICA ==========
 
 let currentUser = null;
@@ -198,7 +205,7 @@ async function guardarAsistencia() {
     const anio = document.getElementById('sel-anio').value;
     const materia = document.getElementById('sel-materia').value;
     const ahora = new Date();
-    const fecha = ahora.toISOString().split('T')[0];
+    const fecha = fechaLocal(ahora);
     const hora = ahora.toLocaleTimeString('es-BO', {hour:'2-digit', minute:'2-digit', hour12:false});
 
     const total = Object.keys(estadosEstudiantes).length;
@@ -246,7 +253,7 @@ async function guardarAsistencia() {
 
 // ========== VERIFICAR REGISTRO HOY ==========
 async function verificarRegistroHoy() {
-    const fecha = new Date().toISOString().split('T')[0];
+    const fecha = fechaLocal();
     const result = await tursodb.query(`
         SELECT DISTINCT especialidad, anio_formacion, materia, hora_registro
         FROM asistencia_estudiantes
@@ -365,7 +372,7 @@ async function guardarCambios() {
     }
     const ahora = new Date();
     const hora = ahora.toLocaleTimeString('es-BO', {hour:'2-digit', minute:'2-digit', hour12:false});
-    const fechaAct = ahora.toISOString().split('T')[0];
+    const fechaAct = fechaLocal(ahora);
 
     for (const [registroId, nuevoEstado] of Object.entries(cambiosPendientes)) {
         await tursodb.query(`
