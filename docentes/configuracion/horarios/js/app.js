@@ -11,6 +11,26 @@ window.addEventListener('DOMContentLoaded', async function () {
     await tursodb.initializeData();
     await cargarEspecialidades('hor-especialidad');
     await cargarEspecialidades('ver-especialidad');
+
+    // Mascara formato 24h para campos de hora
+    ['hor-inicio', 'hor-fin'].forEach(id => {
+        const input = document.getElementById(id);
+        input.addEventListener('input', function() {
+            let v = this.value.replace(/[^0-9]/g, '');
+            if (v.length >= 3) v = v.substring(0,2) + ':' + v.substring(2,4);
+            this.value = v;
+        });
+        input.addEventListener('blur', function() {
+            const match = this.value.match(/^(\d{1,2}):(\d{2})$/);
+            if (match) {
+                let h = Math.min(23, parseInt(match[1]));
+                let m = Math.min(59, parseInt(match[2]));
+                this.value = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+            } else {
+                this.value = '';
+            }
+        });
+    });
 });
 
 // ========== DROPDOWN ==========
