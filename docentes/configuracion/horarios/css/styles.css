@@ -567,3 +567,11 @@ input[type="date"]:focus { outline: none; border-color: #007bff; }
 .clase-materia { display: block; font-size: 12px; font-weight: 700; }
 .clase-hora    { display: block; font-size: 11px; opacity: 0.85; margin-top: 3px; }
 .sin-clase { color: #ccc; display: block; text-align: center; padding: 10px 0; }
+
+/* Boton cancelar dentro de card (fondo blanco) */
+.card .btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+}
+.card .btn-secondary:hover { background: #5a6268; }
