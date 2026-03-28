@@ -174,7 +174,7 @@ class TursoDB {
     
     // Inicializar datos
     async initializeData() {
-        if (sessionStorage.getItem('db_initialized')) return;
+        if (sessionStorage.getItem('db_initialized') === 'v2') return;
         // Eliminar tablas obsoletas
         await this.query(`DROP TABLE IF EXISTS perfiles`);
         await this.query(`DROP TABLE IF EXISTS estudiantes_old`);
@@ -401,7 +401,7 @@ class TursoDB {
             await this.query('DELETE FROM usuarios WHERE id = ?', ['1']);
         }
 
-        sessionStorage.setItem('db_initialized', '1');
+        sessionStorage.setItem('db_initialized', 'v2');
     }
 }
 
