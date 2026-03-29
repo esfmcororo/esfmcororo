@@ -11,7 +11,7 @@ body {
 
 @media (max-width: 768px) {
     body {
-        background: url('/esfmcororo/fondo_movil.png') center bottom / 130% no-repeat;
+        background: url('/esfmcororo/fondo_movil.png') center top / cover scroll no-repeat;
     }
 }
 
@@ -19,7 +19,6 @@ body {
 
 .header {
     background: rgba(255,255,255,0.1);
-    backdrop-filter: blur(10px);
     padding: 15px 20px;
     display: flex;
     justify-content: space-between;
@@ -276,7 +275,6 @@ body {
     font-size: 14px;
     color: white;
     transition: all 0.3s;
-    backdrop-filter: blur(5px);
 }
 .user-dropdown-btn:hover { background: rgba(255,255,255,0.3); }
 .user-dropdown-content {
@@ -498,7 +496,6 @@ input[type="date"]:focus { outline: none; border-color: #007bff; }
     cursor: pointer;
     transition: all 0.3s;
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    backdrop-filter: blur(10px);
     border: 1px solid rgba(255,255,255,0.2);
 }
 .module-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
