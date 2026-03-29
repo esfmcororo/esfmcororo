@@ -381,7 +381,7 @@ async function guardarCambios() {
     }
 
     cambiosPendientes = {};
-    alert('Cambios guardados correctamente');
+    showToast('Cambios guardados correctamente', 'success');
     volverSeleccion();
 }
 

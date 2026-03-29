@@ -140,7 +140,7 @@ async function agregarMateria() {
     const especialidad = document.getElementById('mat-especialidad').value;
     const anio = document.getElementById('mat-anio').value;
 
-    if (!nombre) { alert('Ingresa el nombre de la materia'); return; }
+    if (!nombre) { showToast('Ingresa el nombre de la materia', 'warning'); return; }
 
     // Verificar duplicado
     const existe = await tursodb.query(
@@ -148,7 +148,7 @@ async function agregarMateria() {
         [nombre, especialidad, anio]
     );
     if (existe.rows && existe.rows.length > 0) {
-        alert('Ya existe una materia con ese nombre en este grupo'); return;
+        showToast('Ya existe una materia con ese nombre en este grupo', 'warning'); return;
     }
 
     const id = Date.now().toString() + Math.random().toString(36).substr(2,4);
@@ -185,7 +185,7 @@ async function eliminarMateria(id, nombre) {
         return;
     }
 
-    if (!confirm(`¿Eliminar la materia "${nombre}"?\n\nNo tiene registros de asistencia asociados.`)) return;
+    if (!(await showConfirm('Eliminar Materia', `¿Eliminar la materia <strong>${nombre}</strong>?`, 'error'))) return;
     await tursodb.query(`DELETE FROM materias WHERE id = ?`, [id]);
     await cargarMaterias();
 }

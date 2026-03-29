@@ -44,7 +44,7 @@ function volverDocentes() {
 // ========== VISTA 1: BUSCAR ==========
 async function buscarRegistros() {
     const fecha = document.getElementById('input-fecha').value;
-    if (!fecha) { alert('Selecciona una fecha'); return; }
+    if (!fecha) { showToast('Selecciona una fecha', 'warning'); return; }
     fechaBuscada = fecha;
 
     document.getElementById('registros-dia').style.display = 'none';
@@ -221,7 +221,7 @@ async function guardarCambios() {
     }
 
     cambiosPendientes = {};
-    alert('Cambios guardados correctamente');
+    showToast('Cambios guardados correctamente', 'success');
     volverABuscar();
 }
 
@@ -241,24 +241,17 @@ function volverABuscar() {
 
 async function eliminarRegistroDirecto(especialidad, anio, hora, fecha, materia, total) {
     const [anioF, mes, dia] = fecha.split('-');
-    const confirmacion = prompt(
-        `ELIMINAR REGISTRO DE ASISTENCIA\n\n` +
-        `Grupo: ${especialidad} - ${anio}\n` +
-        `Materia: ${materia || 'Sin materia'}\n` +
-        `Fecha: ${dia}/${mes}/${anioF} | Hora: ${hora}\n` +
-        `Total: ${total} estudiantes\n\n` +
-        `Escribe ELIMINAR para confirmar:`
+    const ok1 = await showPromptConfirm(
+        'Eliminar Registro de Asistencia',
+        `Grupo: ${especialidad} - ${anio}<br>Materia: ${materia || 'Sin materia'}<br>Fecha: ${dia}/${mes}/${anioF} | Hora: ${hora}<br>Total: ${total} estudiantes`,
+        'ELIMINAR'
     );
-    if (confirmacion === null) return;
-    if (confirmacion.trim().toUpperCase() !== 'ELIMINAR') {
-        alert('Texto incorrecto. No se eliminaron los registros.');
-        return;
-    }
+    if (!ok1) return;
     await tursodb.query(`
         DELETE FROM asistencia_estudiantes
         WHERE especialidad = ? AND anio_formacion = ? AND hora_registro = ? AND fecha = ? AND docente_id = ?
     `, [especialidad, anio, hora, fecha, String(currentUser.id)]);
-    alert(`Registro eliminado correctamente. ${total} registros eliminados.`);
+    showToast(`${total} registros eliminados correctamente`, 'success');
     await buscarRegistros();
 }
 
@@ -276,29 +269,19 @@ async function eliminarRegistro() {
     const materia = document.getElementById('det-info').textContent.split('|')[0].replace('📖','').trim();
 
     // Pedir confirmacion escribiendo "eliminar"
-    const confirmacion = prompt(
-        `⚠️ ELIMINAR REGISTRO DE ASISTENCIA\n\n` +
-        `Grupo: ${especialidad} - ${anio}\n` +
-        `Materia: ${materia}\n` +
-        `Fecha: ${dia}/${mes}/${anioF} | Hora: ${hora}\n` +
-        `Total registros: ${total} estudiantes\n\n` +
-        `Esta accion eliminara TODOS los registros de este grupo en esta fecha y hora.\n` +
-        `Tambien desaparecera de los reportes de asistencia.\n\n` +
-        `Escribe ELIMINAR para confirmar:`
+    const ok2 = await showPromptConfirm(
+        'Eliminar Registro de Asistencia',
+        `Grupo: ${especialidad} - ${anio}<br>Materia: ${materia}<br>Fecha: ${dia}/${mes}/${anioF} | Hora: ${hora}<br>Total: ${total} estudiantes<br><br>Esto eliminara TODOS los registros y desaparecera de los reportes.`,
+        'ELIMINAR'
     );
-
-    if (confirmacion === null) return;
-    if (confirmacion.trim().toUpperCase() !== 'ELIMINAR') {
-        alert('Texto incorrecto. No se eliminaron los registros.');
-        return;
-    }
+    if (!ok2) return;
 
     await tursodb.query(`
         DELETE FROM asistencia_estudiantes
         WHERE especialidad = ? AND anio_formacion = ? AND hora_registro = ? AND fecha = ? AND docente_id = ?
     `, [especialidad, anio, hora, fecha, String(currentUser.id)]);
 
-    alert(`✅ Registro eliminado correctamente.\n${total} registros de asistencia eliminados.`);
+    showToast('Registro eliminado correctamente', 'success');
     volverABuscar();
     await buscarRegistros();
 }

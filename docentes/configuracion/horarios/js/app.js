@@ -165,8 +165,8 @@ async function agregarHorario() {
     const inicio = document.getElementById('hor-inicio').value;
     const fin = document.getElementById('hor-fin').value;
 
-    if (!materia || !dia || !inicio || !fin) { alert('Completa todos los campos'); return; }
-    if (fin <= inicio) { alert('La hora fin debe ser posterior a la hora inicio'); return; }
+    if (!materia || !dia || !inicio || !fin) { showToast('Completa todos los campos', 'warning'); return; }
+    if (fin <= inicio) { showToast('La hora fin debe ser posterior a la hora inicio', 'warning'); return; }
 
     // Verificar duplicado
     const existe = await tursodb.query(
@@ -174,7 +174,7 @@ async function agregarHorario() {
         [especialidad, anio, materia, dia]
     );
     if (existe.rows && existe.rows.length > 0) {
-        alert(`Ya existe un horario para ${materia} el ${dia}`); return;
+        showToast(`Ya existe ese horario`, 'warning'); return;
     }
 
     const id = Date.now().toString() + Math.random().toString(36).substr(2,4);
@@ -193,7 +193,7 @@ async function agregarHorario() {
 }
 
 async function eliminarHorario(id) {
-    if (!confirm('¿Eliminar este horario?')) return;
+    if (!(await showConfirm('Eliminar Horario', '¿Eliminar este horario?', 'error'))) return;
     await tursodb.query(`DELETE FROM horarios WHERE id = ?`, [id]);
     await cargarListaHorarios();
 }
