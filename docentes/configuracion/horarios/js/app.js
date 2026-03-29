@@ -233,12 +233,7 @@ async function verHorarios() {
         if (porDia[dia]) porDia[dia].push(h);
     });
 
-    const diasActivos = dias.filter(d => porDia[d].length > 0);
-    if (diasActivos.length === 0) {
-        grilla.innerHTML = '<div class="card"><p style="text-align:center;color:#666;">No hay horarios para mostrar</p></div>';
-        grilla.style.display = 'block';
-        return;
-    }
+    const diasActivos = dias;
 
     let html = `<h3 style="color:white; margin-bottom:12px;">&#128203; ${especialidad} - ${anio}</h3>`;
     html += '<div class="grilla-wrapper"><table class="grilla-tabla"><thead><tr>';
