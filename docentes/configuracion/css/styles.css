@@ -281,17 +281,16 @@ body {
 .user-dropdown-btn:hover { background: rgba(255,255,255,0.3); }
 .user-dropdown-content {
     display: none;
-    position: absolute;
-    right: 0;
-    top: 100%;
-    margin-top: 5px;
+    position: fixed;
+    right: 20px;
+    top: 70px;
     background: white;
     border: 1px solid #ddd;
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    min-width: 200px;
-    z-index: 1000;
-    padding: 10px;
+    min-width: 220px;
+    z-index: 99999;
+    padding-bottom: 10px;
 }
 .user-dropdown.active .user-dropdown-content { display: block; }
 .user-dropdown-content p { margin: 0 0 8px 0; color: #333; font-size: 13px; }
