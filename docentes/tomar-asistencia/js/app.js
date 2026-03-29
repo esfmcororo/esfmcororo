@@ -113,7 +113,7 @@ async function cargarLista() {
     const especialidad = document.getElementById('sel-especialidad').value;
     const anio = document.getElementById('sel-anio').value;
     const materia = document.getElementById('sel-materia').value;
-    if (!especialidad || !anio || !materia) { alert('Selecciona especialidad, año y materia'); return; }
+    if (!especialidad || !anio || !materia) { showToast('Selecciona especialidad, año y materia', 'warning'); return; }
 
     const result = await tursodb.query(
         `SELECT * FROM estudiantes WHERE especialidad = ? AND anio_formacion = ? ORDER BY apellido_paterno, nombre`,
@@ -121,7 +121,7 @@ async function cargarLista() {
     );
 
     if (!result.rows || result.rows.length === 0) {
-        alert('No hay estudiantes en este grupo'); return;
+        showToast('No hay estudiantes en este grupo', 'warning'); return;
     }
 
     // Inicializar todos como PRESENTE
@@ -218,10 +218,10 @@ async function guardarAsistencia() {
     `, [String(currentUser.id), especialidad, anio, materia, fecha]);
 
     if (existe.rows && parseInt(existe.rows[0].total) > 0) {
-        const confirmar = confirm(`⚠️ Ya existe un registro de asistencia para este grupo hoy.\n\n¿Deseas guardar un nuevo registro de todas formas?`);
+        const confirmar = await showConfirm('Registro duplicado', `Ya existe un registro de <strong>${materia}</strong> para este grupo hoy.<br>¿Deseas guardar un nuevo registro de todas formas?`, 'warning');
         if (!confirmar) return;
     } else {
-        const confirmar = confirm(`¿Guardar asistencia?\n\n✅ Presentes: ${presentes}\n❌ Ausentes: ${total - presentes}\n\nGrupo: ${especialidad} - ${anio}`);
+        const confirmar = await showConfirm('Guardar Asistencia', `<strong>${especialidad} - ${anio}</strong><br>Materia: ${materia}<br><br>P Presentes: ${presentes} | A Ausentes: ${total - presentes}`, 'success');
         if (!confirmar) return;
     }
 
@@ -232,7 +232,7 @@ async function guardarAsistencia() {
             params: [Date.now().toString() + Math.random().toString(36).substr(2,5), estId, String(currentUser.id), especialidad, anio, materia, est, fecha, hora]
         }));
         await tursodb.batchQuery(queries);
-        alert("Asistencia guardada: " + presentes + " presentes | " + (total - presentes) + " ausentes");
+        showToast(`Asistencia guardada: ${presentes} presentes | ${total - presentes} ausentes`, "success");
         // Volver al paso de selección limpio
         document.getElementById('paso-lista').style.display = 'none';
         document.getElementById('paso-seleccion').style.display = 'block';
@@ -245,7 +245,7 @@ async function guardarAsistencia() {
         document.querySelectorAll('.registros-hoy').forEach(el => el.remove());
         await verificarRegistroHoy();
     } catch (error) {
-        alert('❌ Error guardando: ' + error.message);
+        showToast('Error guardando: ' + error.message, 'error');
     }
 }
 

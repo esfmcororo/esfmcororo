@@ -181,7 +181,7 @@ async function eliminarMateria(id, nombre) {
     const total = parseInt(registros.rows?.[0]?.total || 0);
 
     if (total > 0) {
-        alert(`⚠️ No se puede eliminar "${nombre}"\n\nTiene ${total} registro${total !== 1 ? 's' : ''} de asistencia asociado${total !== 1 ? 's' : ''}.\n\nElimina primero los registros de asistencia de esta materia.`);
+        showToast(`No se puede eliminar "${nombre}". Tiene ${total} registro(s) de asistencia asociados.`, 'error'); return;
         return;
     }
 
