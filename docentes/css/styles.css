@@ -120,5 +120,5 @@ body {
     .header h1 { font-size: 1rem; }
     .title-line2 { font-size: 1.1rem; }
     .container { padding: 15px; }
-    .modules-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modules-grid { grid-template-columns: 1fr; gap: 15px; }
 }
