@@ -401,7 +401,38 @@ class TursoDB {
             await this.query('DELETE FROM usuarios WHERE id = ?', ['1']);
         }
 
-        sessionStorage.setItem('db_initialized', 'v2');
+        await this.query(`
+            CREATE TABLE IF NOT EXISTS participaciones (
+                id TEXT PRIMARY KEY,
+                estudiante_id TEXT NOT NULL,
+                docente_id TEXT NOT NULL,
+                especialidad TEXT NOT NULL,
+                anio_formacion TEXT NOT NULL,
+                fecha TEXT NOT NULL,
+                hora TEXT NOT NULL,
+                sesion_id TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await this.query(`
+            CREATE TABLE IF NOT EXISTS ruleta_sesiones (
+                id TEXT PRIMARY KEY,
+                docente_id TEXT NOT NULL,
+                especialidad TEXT NOT NULL,
+                anio_formacion TEXT NOT NULL,
+                fecha_inicio TEXT NOT NULL,
+                fecha_fin TEXT,
+                total_estudiantes INTEGER,
+                total_participaron INTEGER,
+                activa INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await this.query(`ALTER TABLE participaciones ADD COLUMN sesion_id TEXT`).catch(() => {});
+
+        sessionStorage.setItem('db_initialized', 'v3');
     }
 }
 
