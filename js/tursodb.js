@@ -432,6 +432,7 @@ class TursoDB {
 
         await this.query(`ALTER TABLE participaciones ADD COLUMN sesion_id TEXT`).catch(() => {});
 
+        await this.query(`ALTER TABLE ruleta_sesiones ADD COLUMN materia TEXT`).catch(() => {});
         sessionStorage.setItem('db_initialized', 'v3');
     }
 }

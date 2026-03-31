@@ -50,8 +50,14 @@ async function cargarEspecialidades() {
 async function cargarAnios() {
     const especialidad = document.getElementById('sel-especialidad').value;
     const grupoAnio = document.getElementById('grupo-anio');
+    const grupoMateria = document.getElementById('grupo-materia');
     const btnIniciar = document.getElementById('btn-iniciar');
-    if (!especialidad) { grupoAnio.style.display = 'none'; btnIniciar.style.display = 'none'; return; }
+    if (!especialidad) {
+        grupoAnio.style.display = 'none';
+        grupoMateria.style.display = 'none';
+        btnIniciar.style.display = 'none';
+        return;
+    }
 
     const result = await tursodb.query(
         `SELECT DISTINCT anio_formacion FROM estudiantes WHERE especialidad = ? ORDER BY anio_formacion`,
@@ -64,14 +70,41 @@ async function cargarAnios() {
         .forEach(r => sel.innerHTML += `<option value="${r.anio_formacion}">${r.anio_formacion}</option>`);
 
     grupoAnio.style.display = 'block';
-    sel.onchange = () => { btnIniciar.style.display = sel.value ? 'block' : 'none'; };
+    grupoMateria.style.display = 'none';
+    btnIniciar.style.display = 'none';
+    sel.onchange = () => cargarMaterias();
+}
+
+async function cargarMaterias() {
+    const especialidad = document.getElementById('sel-especialidad').value;
+    const anio = document.getElementById('sel-anio').value;
+    const grupoMateria = document.getElementById('grupo-materia');
+    const btnIniciar = document.getElementById('btn-iniciar');
+
+    if (!anio) { grupoMateria.style.display = 'none'; btnIniciar.style.display = 'none'; return; }
+
+    const result = await tursodb.query(
+        `SELECT nombre FROM materias WHERE especialidad = ? AND anio_formacion = ? ORDER BY nombre`,
+        [especialidad, anio]
+    );
+
+    const sel = document.getElementById('sel-materia');
+    sel.innerHTML = '<option value="">-- Selecciona --</option>';
+    (result.rows || []).forEach(m => sel.innerHTML += `<option value="${m.nombre}">${m.nombre}</option>`);
+
+    grupoMateria.style.display = 'block';
+    btnIniciar.style.display = 'none';
+    sel.onchange = () => {
+        btnIniciar.style.display = sel.value ? 'block' : 'none';
+    };
 }
 
 // ========== INICIAR RULETA ==========
 async function iniciarRuleta() {
     const especialidad = document.getElementById('sel-especialidad').value;
     const anio = document.getElementById('sel-anio').value;
-    if (!especialidad || !anio) return;
+    const materia = document.getElementById('sel-materia').value;
+    if (!especialidad || !anio || !materia) return;
 
     // Cargar todos los estudiantes
     const estResult = await tursodb.query(
@@ -87,8 +120,8 @@ async function iniciarRuleta() {
 
     // Buscar sesión activa
     const sesionResult = await tursodb.query(
-        `SELECT * FROM ruleta_sesiones WHERE docente_id = ? AND especialidad = ? AND anio_formacion = ? AND activa = 1 ORDER BY created_at DESC LIMIT 1`,
-        [String(currentUser.id), especialidad, anio]
+        `SELECT * FROM ruleta_sesiones WHERE docente_id = ? AND especialidad = ? AND anio_formacion = ? AND materia = ? AND activa = 1 ORDER BY created_at DESC LIMIT 1`,
+        [String(currentUser.id), especialidad, anio, materia]
     );
 
     if (sesionResult.rows && sesionResult.rows.length > 0) {
@@ -99,8 +132,8 @@ async function iniciarRuleta() {
         const fechaLocal = new Date();
         const fecha = `${fechaLocal.getFullYear()}-${String(fechaLocal.getMonth()+1).padStart(2,'0')}-${String(fechaLocal.getDate()).padStart(2,'0')}`;
         await tursodb.query(
-            `INSERT INTO ruleta_sesiones (id, docente_id, especialidad, anio_formacion, fecha_inicio, total_estudiantes, activa) VALUES (?, ?, ?, ?, ?, ?, 1)`,
-            [sesionId, String(currentUser.id), especialidad, anio, fecha, estudiantes.length]
+            `INSERT INTO ruleta_sesiones (id, docente_id, especialidad, anio_formacion, materia, fecha_inicio, total_estudiantes, activa) VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+            [sesionId, String(currentUser.id), especialidad, anio, materia, fecha, estudiantes.length]
         );
     }
 
@@ -111,6 +144,7 @@ async function iniciarRuleta() {
     document.getElementById('vista-seleccion').style.display = 'none';
     document.getElementById('vista-ruleta').style.display = 'block';
     document.getElementById('ruleta-titulo').textContent = `${especialidad} - ${anio}`;
+    document.getElementById('ruleta-info').textContent = `📖 ${materia}`;
 
     dibujarRuleta();
     await cargarReporte();
@@ -421,6 +455,7 @@ async function mostrarHistorial() {
             <div class="historial-card-header" onclick="toggleSesion('ses-${sesion.id}', '${sesion.id}')">
                 <div>
                     <strong>${sesion.especialidad} - ${sesion.anio_formacion}</strong>
+                    <small>📖 ${sesion.materia || 'Sin materia'}</small>
                     <small>${sesion.fecha_inicio} → ${fechaFin} | ${estado}</small>
                     <small>Participaron: ${sesion.total_participaron || '?'} / ${sesion.total_estudiantes || '?'}</small>
                 </div>
@@ -543,4 +578,6 @@ async function reiniciarRuleta() {
     document.getElementById('sel-especialidad').value = '';
     document.getElementById('sel-anio').value = '';
     document.getElementById('grupo-anio').style.display = 'none';
+    document.getElementById('grupo-materia').style.display = 'none';
+    document.getElementById('sel-materia').value = '';
 }
