@@ -269,18 +269,20 @@ async function mostrarGanador() {
         [id, ganador.id, String(currentUser.id), especialidad, anio, fecha, hora, sesionId]
     );
 
-    // Quitar de pendientes y redibujar
+    // Quitar de pendientes y redibujar INMEDIATAMENTE
     pendientes = pendientes.filter(e => e.id !== ganador.id);
     dibujarRuleta();
     actualizarInfo();
-    await cargarReporte();
 
-    // Reactivar boton despues de cerrar celebracion
-    document.getElementById('btn-girar').disabled = false;
+    // Reactivar boton y estado ANTES de cualquier await
     girando = false;
+    document.getElementById('btn-girar').disabled = pendientes.length === 0;
 
-    // Mostrar celebracion
+    // Mostrar celebracion inmediatamente
     mostrarCelebracion(nombre, ganador.codigo_unico);
+
+    // Cargar reporte en segundo plano (no bloquea)
+    cargarReporte();
 }
 
 function mostrarCelebracion(nombre, codigo) {
