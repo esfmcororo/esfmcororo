@@ -265,3 +265,57 @@ body {
     .ruleta-wrapper { width: 300px; }
     #ruleta-canvas { width: 300px; height: 300px; }
 }
+
+/* Historial */
+.btn-historial {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
+    width: 100%;
+}
+.btn-historial:hover { background: rgba(255,255,255,0.25); }
+
+.historial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.historial-card {
+    background: white;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+
+.historial-card-header {
+    padding: 14px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid #6f42c1;
+    transition: background 0.2s;
+}
+.historial-card-header:hover { background: #f8f9fa; }
+.historial-card-header strong { display: block; color: #222; font-size: 14px; }
+.historial-card-header small { display: block; color: #666; font-size: 12px; margin-top: 2px; }
+.toggle-icon { color: #6f42c1; font-weight: bold; flex-shrink: 0; }
+
+.historial-participantes {
+    padding: 8px;
+    background: #fafafa;
+    border-top: 1px solid #eee;
+    max-height: 300px;
+    overflow-y: auto;
+}

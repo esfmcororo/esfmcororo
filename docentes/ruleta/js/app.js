@@ -375,3 +375,89 @@ function mostrarCelebracion(nombre, codigo) {
     overlay.addEventListener('click', () => overlay.remove());
     setTimeout(() => { if (document.getElementById('celebracion-overlay')) overlay.remove(); }, 7000);
 }
+
+// ========== HISTORIAL ==========
+async function mostrarHistorial() {
+    document.getElementById('vista-seleccion').style.display = 'none';
+    document.getElementById('vista-historial').style.display = 'block';
+
+    const result = await tursodb.query(`
+        SELECT * FROM ruleta_sesiones
+        WHERE docente_id = ?
+        ORDER BY created_at DESC
+    `, [String(currentUser.id)]);
+
+    const lista = document.getElementById('historial-lista');
+
+    if (!result.rows || result.rows.length === 0) {
+        lista.innerHTML = '<div class="card"><p style="text-align:center;color:#666;">No hay sesiones registradas</p></div>';
+        return;
+    }
+
+    lista.innerHTML = '';
+    for (const sesion of result.rows) {
+        const estado = sesion.activa == 1 ? '🟢 Activa' : '⚫ Finalizada';
+        const fechaFin = sesion.fecha_fin ? sesion.fecha_fin : 'En curso';
+
+        const card = document.createElement('div');
+        card.className = 'historial-card';
+        card.innerHTML = `
+            <div class="historial-card-header" onclick="toggleSesion('ses-${sesion.id}', '${sesion.id}')">
+                <div>
+                    <strong>${sesion.especialidad} - ${sesion.anio_formacion}</strong>
+                    <small>${sesion.fecha_inicio} → ${fechaFin} | ${estado}</small>
+                    <small>Participaron: ${sesion.total_participaron || '?'} / ${sesion.total_estudiantes || '?'}</small>
+                </div>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="historial-participantes" id="ses-${sesion.id}" style="display:none;"></div>
+        `;
+        lista.appendChild(card);
+    }
+}
+
+async function toggleSesion(divId, sesionId) {
+    const div = document.getElementById(divId);
+    const icon = div.previousElementSibling.querySelector('.toggle-icon');
+
+    if (div.style.display === 'block') {
+        div.style.display = 'none';
+        icon.textContent = '▼';
+        return;
+    }
+
+    div.innerHTML = '<p style="padding:10px;color:#999;">Cargando...</p>';
+    div.style.display = 'block';
+    icon.textContent = '▲';
+
+    const result = await tursodb.query(`
+        SELECT p.fecha, p.hora, e.nombre, e.apellido_paterno, e.apellido_materno, e.codigo_unico
+        FROM participaciones p
+        JOIN estudiantes e ON p.estudiante_id = e.id
+        WHERE p.sesion_id = ?
+        ORDER BY p.fecha ASC, p.hora ASC
+    `, [sesionId]);
+
+    if (!result.rows || result.rows.length === 0) {
+        div.innerHTML = '<p style="padding:10px;color:#999;text-align:center;">Sin participantes</p>';
+        return;
+    }
+
+    div.innerHTML = result.rows.map((r, i) => {
+        const apellidoM = r.apellido_materno !== 'SIN DATO' ? r.apellido_materno : '';
+        const nombre = `${r.apellido_paterno} ${apellidoM} ${r.nombre}`.trim();
+        return `
+            <div class="participante-item">
+                <span class="part-num">${i + 1}</span>
+                <div class="part-info">
+                    <strong>${nombre}</strong>
+                    <small>${r.codigo_unico} | ${r.fecha} ${r.hora}</small>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function cerrarHistorial() {
+    document.getElementById('vista-historial').style.display = 'none';
+    document.getElementById('vista-seleccion').style.display = 'block';
+}

@@ -48,7 +48,19 @@
                     <button onclick="iniciarRuleta()" class="btn-primary btn-full" id="btn-iniciar" style="display:none;">
                         🎯 Iniciar Ruleta
                     </button>
+                    <button onclick="mostrarHistorial()" class="btn-historial btn-full" style="margin-top:10px;">
+                        📋 Ver Historial de Sesiones
+                    </button>
                 </div>
+            </div>
+
+            <!-- VISTA 3: Historial -->
+            <div id="vista-historial" style="display:none;">
+                <div class="historial-header">
+                    <h2 style="color:white;">📋 Historial de Sesiones</h2>
+                    <button onclick="cerrarHistorial()" class="btn-secondary">← Volver</button>
+                </div>
+                <div id="historial-lista"></div>
             </div>
 
             <!-- VISTA 2: Ruleta -->
