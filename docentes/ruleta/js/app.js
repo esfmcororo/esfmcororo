@@ -477,3 +477,70 @@ function cerrarHistorial() {
     document.getElementById('vista-historial').style.display = 'none';
     document.getElementById('vista-seleccion').style.display = 'block';
 }
+
+// ========== REPORTE ==========
+async function cargarReporte() {
+    if (!sesionId) return;
+    const result = await tursodb.query(`
+        SELECT p.fecha, p.hora, e.nombre, e.apellido_paterno, e.apellido_materno, e.codigo_unico
+        FROM participaciones p
+        JOIN estudiantes e ON p.estudiante_id = e.id
+        WHERE p.sesion_id = ?
+        ORDER BY p.fecha ASC, p.hora ASC
+    `, [sesionId]);
+
+    const lista = document.getElementById('reporte-lista');
+    const participaron = result.rows ? result.rows.length : 0;
+    document.getElementById('reporte-titulo').textContent = `📋 Participantes (${participaron}/${estudiantes.length})`;
+
+    if (!result.rows || result.rows.length === 0) {
+        lista.innerHTML = '<p style="color:#999; text-align:center; padding:15px;">Aún no hay participantes</p>';
+        return;
+    }
+
+    lista.innerHTML = result.rows.map((r, i) => {
+        const apellidoM = r.apellido_materno !== 'SIN DATO' ? r.apellido_materno : '';
+        const nombre = `${r.apellido_paterno} ${apellidoM} ${r.nombre}`.trim();
+        return `
+            <div class="participante-item">
+                <span class="part-num">${i + 1}</span>
+                <div class="part-info">
+                    <strong>${nombre}</strong>
+                    <small>${r.codigo_unico} | ${r.fecha} ${r.hora}</small>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// ========== REINICIAR ==========
+async function reiniciarRuleta() {
+    const participaron = estudiantes.length - pendientes.length;
+    const ok = await showConfirm(
+        'Reiniciar Ruleta',
+        `Se guardarán los <strong>${participaron}</strong> participantes registrados y se iniciará una nueva sesión.<br><br>¿Confirmas el reinicio?`,
+        'warning'
+    );
+    if (!ok) return;
+
+    const ahora = new Date();
+    const fecha = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;
+    await tursodb.query(
+        `UPDATE ruleta_sesiones SET activa = 0, fecha_fin = ?, total_participaron = ? WHERE id = ?`,
+        [fecha, participaron, sesionId]
+    );
+
+    showToast(`Sesión guardada con ${participaron} participantes`, 'success');
+
+    sesionId = null;
+    pendientes = [];
+    anguloActual = 0;
+    girando = false;
+
+    document.getElementById('ganador-box').style.display = 'none';
+    document.getElementById('vista-ruleta').style.display = 'none';
+    document.getElementById('vista-seleccion').style.display = 'block';
+    document.getElementById('btn-iniciar').style.display = 'none';
+    document.getElementById('sel-especialidad').value = '';
+    document.getElementById('sel-anio').value = '';
+    document.getElementById('grupo-anio').style.display = 'none';
+}
