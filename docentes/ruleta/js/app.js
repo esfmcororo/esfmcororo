@@ -13,6 +13,10 @@ const COLORES = [
     '#F0B27A','#82E0AA','#F1948A','#AED6F1','#A9DFBF'
 ];
 
+// Cache local para selects
+let cacheEstudiantes = [];
+let cacheMaterias = [];
+
 window.addEventListener('DOMContentLoaded', async function () {
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (!user) { window.location.href = '../../index.html'; return; }
@@ -20,8 +24,23 @@ window.addEventListener('DOMContentLoaded', async function () {
     document.querySelectorAll('.user-display-name').forEach(el => el.textContent = user.nombre);
     document.querySelectorAll('.dropdown-rol').forEach(el => el.textContent = user.rol.toUpperCase());
     await tursodb.initializeData();
-    await cargarEspecialidades();
+    await cargarTodo();
 });
+
+// Carga todo en 1 sola peticion HTTP
+async function cargarTodo() {
+    const [estResult, matResult] = await Promise.all([
+        tursodb.query(`SELECT id, nombre, apellido_paterno, apellido_materno, codigo_unico, especialidad, anio_formacion FROM estudiantes ORDER BY especialidad, anio_formacion, apellido_paterno`),
+        tursodb.query(`SELECT nombre, especialidad, anio_formacion FROM materias ORDER BY especialidad, anio_formacion, nombre`)
+    ]);
+    cacheEstudiantes = estResult.rows || [];
+    cacheMaterias = matResult.rows || [];
+
+    // Llenar especialidades desde cache
+    const especialidades = [...new Set(cacheEstudiantes.map(e => e.especialidad))].sort();
+    const sel = document.getElementById('sel-especialidad');
+    especialidades.forEach(esp => sel.innerHTML += `<option value="${esp}">${esp}</option>`);
+}
 
 // ========== DROPDOWN ==========
 function toggleUserDropdown(id) {
@@ -40,14 +59,8 @@ function volverDocentes() {
     window.location.href = '../index.html';
 }
 
-// ========== SELECCIÓN ==========
-async function cargarEspecialidades() {
-    const result = await tursodb.query(`SELECT DISTINCT especialidad FROM estudiantes ORDER BY especialidad`);
-    const sel = document.getElementById('sel-especialidad');
-    (result.rows || []).forEach(r => sel.innerHTML += `<option value="${r.especialidad}">${r.especialidad}</option>`);
-}
-
-async function cargarAnios() {
+// ========== SELECCIÓN (desde cache local) ==========
+function cargarAnios() {
     const especialidad = document.getElementById('sel-especialidad').value;
     const grupoAnio = document.getElementById('grupo-anio');
     const grupoMateria = document.getElementById('grupo-materia');
@@ -58,34 +71,34 @@ async function cargarAnios() {
         btnIniciar.style.display = 'none';
         return;
     }
-    const result = await tursodb.query(
-        `SELECT DISTINCT anio_formacion FROM estudiantes WHERE especialidad = ? ORDER BY anio_formacion`,
-        [especialidad]
-    );
     const orden = ['PRIMERO','SEGUNDO','TERCERO','CUARTO','QUINTO'];
+    const anios = [...new Set(cacheEstudiantes
+        .filter(e => e.especialidad === especialidad)
+        .map(e => e.anio_formacion))]
+        .sort((a,b) => orden.indexOf(a) - orden.indexOf(b));
+
     const sel = document.getElementById('sel-anio');
     sel.innerHTML = '<option value="">-- Selecciona --</option>';
-    (result.rows || []).sort((a,b) => orden.indexOf(a.anio_formacion) - orden.indexOf(b.anio_formacion))
-        .forEach(r => sel.innerHTML += `<option value="${r.anio_formacion}">${r.anio_formacion}</option>`);
+    anios.forEach(a => sel.innerHTML += `<option value="${a}">${a}</option>`);
     grupoAnio.style.display = 'block';
     grupoMateria.style.display = 'none';
     btnIniciar.style.display = 'none';
 }
 
-async function cargarMaterias() {
+function cargarMaterias() {
     const especialidad = document.getElementById('sel-especialidad').value;
     const anio = document.getElementById('sel-anio').value;
     const grupoMateria = document.getElementById('grupo-materia');
     const btnIniciar = document.getElementById('btn-iniciar');
     if (!anio) { grupoMateria.style.display = 'none'; btnIniciar.style.display = 'none'; return; }
 
-    const result = await tursodb.query(
-        `SELECT nombre FROM materias WHERE especialidad = ? AND anio_formacion = ? ORDER BY nombre`,
-        [especialidad, anio]
-    );
+    const materias = cacheMaterias
+        .filter(m => m.especialidad === especialidad && m.anio_formacion === anio)
+        .map(m => m.nombre);
+
     const sel = document.getElementById('sel-materia');
     sel.innerHTML = '<option value="">-- Selecciona --</option>';
-    (result.rows || []).forEach(m => sel.innerHTML += `<option value="${m.nombre}">${m.nombre}</option>`);
+    materias.forEach(m => sel.innerHTML += `<option value="${m}">${m}</option>`);
     grupoMateria.style.display = 'block';
     btnIniciar.style.display = 'none';
 }
@@ -102,17 +115,14 @@ async function iniciarRuleta() {
     const materia = document.getElementById('sel-materia').value;
     if (!especialidad || !anio || !materia) return;
 
-    // Cargar todos los estudiantes
-    const estResult = await tursodb.query(
-        `SELECT id, nombre, apellido_paterno, apellido_materno, codigo_unico
-         FROM estudiantes WHERE especialidad = ? AND anio_formacion = ?
-         ORDER BY apellido_paterno, nombre`,
-        [especialidad, anio]
-    );
-    if (!estResult.rows || estResult.rows.length === 0) {
+    // Cargar estudiantes desde cache local
+    estudiantes = cacheEstudiantes.filter(e =>
+        e.especialidad === especialidad && e.anio_formacion === anio
+    ).sort((a,b) => a.apellido_paterno.localeCompare(b.apellido_paterno));
+
+    if (estudiantes.length === 0) {
         showToast('No hay estudiantes en este grupo', 'warning'); return;
     }
-    estudiantes = estResult.rows;
 
     // Buscar sesión activa
     const sesionResult = await tursodb.query(
