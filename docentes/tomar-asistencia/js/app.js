@@ -211,7 +211,7 @@ async function guardarAsistencia() {
     const total = Object.keys(estadosEstudiantes).length;
     const presentes = Object.values(estadosEstudiantes).filter(e => e === 'PRESENTE').length;
 
-    // Verificar si ya existe un registro de este grupo hoy
+    // Verificar si ya existe un registro de este grupo+materia hoy
     const existe = await tursodb.query(`
         SELECT COUNT(*) as total FROM asistencia_estudiantes
         WHERE docente_id = ? AND especialidad = ? AND anio_formacion = ? AND materia = ? AND fecha = ?
@@ -225,15 +225,17 @@ async function guardarAsistencia() {
         if (!confirmar) return;
     }
 
+    // Deshabilitar boton para evitar doble guardado
+    const btnGuardar = document.querySelector('.btn-guardar');
+    if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '🔄 Guardando...'; }
+
     try {
-        // Batch: todos los INSERTs en 1 sola peticion HTTP
         const queries = Object.entries(estadosEstudiantes).map(([estId, est]) => ({
             sql: "INSERT INTO asistencia_estudiantes (id, estudiante_id, docente_id, especialidad, anio_formacion, materia, estado, fecha, hora_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params: [Date.now().toString() + Math.random().toString(36).substr(2,5), estId, String(currentUser.id), especialidad, anio, materia, est, fecha, hora]
         }));
         await tursodb.batchQuery(queries);
         showToast(`Asistencia guardada: ${presentes} presentes | ${total - presentes} ausentes`, "success");
-        // Volver al paso de selección limpio
         document.getElementById('paso-lista').style.display = 'none';
         document.getElementById('paso-seleccion').style.display = 'block';
         document.getElementById('sel-especialidad').value = '';
@@ -246,6 +248,8 @@ async function guardarAsistencia() {
         await verificarRegistroHoy();
     } catch (error) {
         showToast('Error guardando: ' + error.message, 'error');
+        // Reactivar boton si hay error
+        if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = '💾 Guardar Asistencia'; }
     }
 }
 
