@@ -3487,7 +3487,7 @@ async function eliminarPersonal(personalId, nombreCompleto) {
     try {
         await tursodb.query('DELETE FROM administrativos WHERE id = ?', [personalId]);
         alert('Personal eliminado correctamente');
-        loadPersonal();
+        loadPersonalCompleto();
     } catch (error) {
         alert('Error al eliminar: ' + error.message);
     }
