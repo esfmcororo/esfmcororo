@@ -224,9 +224,9 @@ async function syncOfflineQueue() {
                     syncedIndices.push(i);
                 } else {
                     const result = await tursodb.query(`
-                        INSERT INTO ${tabla} (${campo}, evento_id, timestamp)
-                        VALUES (?, ?, ?)
-                    `, [personaId, asistencia.evento_id, asistencia.timestamp]);
+                        INSERT INTO ${tabla} (id, ${campo}, evento_id, timestamp)
+                        VALUES (?, ?, ?, ?)
+                    `, [Date.now().toString() + i, personaId, asistencia.evento_id, asistencia.timestamp]);
                     
                     if (!result.error) {
                         syncedCount++;
@@ -1502,7 +1502,7 @@ async function onScanSuccess(qrData, decodedResult) {
             const campo = estudiante ? 'estudiante_id' : 'personal_id';
             
             const { error: insertError } = await Promise.race([
-                tursodb.query(`INSERT INTO ${tabla} (${campo}, evento_id, timestamp) VALUES (?, ?, ?)`, [personaId, currentEventId, new Date().toISOString()]),
+                tursodb.query(`INSERT INTO ${tabla} (id, ${campo}, evento_id, timestamp) VALUES (?, ?, ?, ?)`, [Date.now().toString(), personaId, currentEventId, new Date().toISOString()]),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
             ]);
 
@@ -1598,25 +1598,35 @@ async function loadAsistencias(eventoId) {
     console.log('Cargando asistencias para evento:', eventoId);
     const listEl = document.getElementById('asistencias-list');
     
-    // Usar consulta SQL directa
-    console.log('Ejecutando consulta SQL con eventoId:', eventoId, 'tipo:', typeof eventoId);
-    const result = await tursodb.query(`
-        SELECT a.*, e.nombre, e.apellido_paterno, e.apellido_materno, e.codigo_unico, e.dni, e.especialidad, e.anio_formacion
-        FROM asistencias a
-        JOIN estudiantes e ON a.estudiante_id = e.id
-        WHERE a.evento_id = ?
-        ORDER BY a.timestamp DESC
-    `, [eventoId]);
+    const [resultEst, resultPer] = await Promise.all([
+        tursodb.query(`
+            SELECT a.timestamp, e.nombre, e.apellido_paterno, e.apellido_materno, e.codigo_unico, e.dni, e.especialidad AS categoria, e.anio_formacion AS subcategoria
+            FROM asistencias a
+            JOIN estudiantes e ON a.estudiante_id = e.id
+            WHERE a.evento_id = ?
+            ORDER BY a.timestamp DESC
+        `, [eventoId]),
+        tursodb.query(`
+            SELECT a.timestamp, p.nombre, p.apellido_paterno, p.apellido_materno, p.codigo_unico, p.dni, p.personal AS categoria, p.cargo AS subcategoria
+            FROM asistencias_personal a
+            JOIN administrativos p ON a.personal_id = p.id
+            WHERE a.evento_id = ?
+            ORDER BY a.timestamp DESC
+        `, [eventoId])
+    ]);
     
-    console.log('Resultado consulta directa:', result);
+    const rows = [
+        ...(resultEst.rows || []).map(r => ({ ...r, tipo: 'estudiante' })),
+        ...(resultPer.rows || []).map(r => ({ ...r, tipo: 'personal' }))
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
-    if (!result.rows || result.rows.length === 0) {
+    if (rows.length === 0) {
         listEl.innerHTML = '<p style="text-align: center; color: #666;">No hay asistencias registradas</p>';
         return;
     }
 
     listEl.innerHTML = '';
-    result.rows.forEach(asistencia => {
+    rows.forEach(asistencia => {
         const item = document.createElement('div');
         item.className = 'asistencia-item';
         const time = new Date(asistencia.timestamp).toLocaleString('es-BO', { 
@@ -1627,14 +1637,17 @@ async function loadAsistencias(eventoId) {
             year: 'numeric',
             hour12: false
         });
+        const tipoIcon = asistencia.tipo === 'personal' ? '👔' : '🎓';
+        const etiqueta = asistencia.tipo === 'personal'
+            ? `💼 ${formatearCampoOpcional(asistencia.subcategoria, 'Sin cargo')}`
+            : `🎓 ${formatearCampoOpcional(asistencia.categoria, 'Sin especialidad')} | 📅 Año ${formatearCampoOpcional(asistencia.subcategoria, 'N/A')}`;
         item.innerHTML = `
             <div style="width: 100%;">
-                <strong style="font-size: 16px; color: #333;">${formatearNombreCompleto(asistencia.nombre, asistencia.apellido_paterno, asistencia.apellido_materno)}</strong><br>
+                <strong style="font-size: 16px; color: #333;">${tipoIcon} ${formatearNombreCompleto(asistencia.nombre, asistencia.apellido_paterno, asistencia.apellido_materno)}</strong><br>
                 <small style="color: #666; font-size: 13px;">
                     📋 ${asistencia.codigo_unico} | 
                     🆔 ${formatearCampoOpcional(asistencia.dni, 'Sin DNI')} | 
-                    🎓 ${formatearCampoOpcional(asistencia.especialidad, 'Sin especialidad')} | 
-                    📅 Año ${formatearCampoOpcional(asistencia.anio_formacion, 'N/A')}
+                    ${etiqueta}
                 </small>
             </div>
             <span style="color: #007bff; font-weight: bold;">${time}</span>
@@ -2473,63 +2486,77 @@ async function verListaAsistencias(eventoId, eventoNombre) {
         // LIMPIAR DUPLICADOS AUTOMÁTICAMENTE ANTES DE MOSTRAR
         await limpiarDuplicadosEvento(eventoId);
         
-        const result = await tursodb.query(`
-            SELECT 
-                a.timestamp,
-                e.codigo_unico,
-                e.dni,
-                e.nombre,
-                e.apellido_paterno,
-                e.apellido_materno,
-                e.especialidad,
-                e.anio_formacion
-            FROM asistencias a
-            JOIN estudiantes e ON a.estudiante_id = e.id
-            WHERE a.evento_id = ?
-            ORDER BY e.especialidad, e.anio_formacion, e.codigo_unico
-        `, [eventoId]);
+        const [resultEst, resultPer] = await Promise.all([
+            tursodb.query(`
+                SELECT a.timestamp, e.codigo_unico, e.dni, e.nombre, e.apellido_paterno, e.apellido_materno,
+                    e.especialidad AS categoria, e.anio_formacion AS subcategoria, 'estudiante' AS tipo
+                FROM asistencias a
+                JOIN estudiantes e ON a.estudiante_id = e.id
+                WHERE a.evento_id = ?
+                ORDER BY e.especialidad, e.anio_formacion, e.codigo_unico
+            `, [eventoId]),
+            tursodb.query(`
+                SELECT a.timestamp, p.codigo_unico, p.dni, p.nombre, p.apellido_paterno, p.apellido_materno,
+                    p.personal AS categoria, p.cargo AS subcategoria, 'personal' AS tipo
+                FROM asistencias_personal a
+                JOIN administrativos p ON a.personal_id = p.id
+                WHERE a.evento_id = ?
+                ORDER BY p.personal, p.codigo_unico
+            `, [eventoId])
+        ]);
         
-        if (!result.rows || result.rows.length === 0) {
+        const todasAsistencias = [
+            ...(resultEst.rows || []),
+            ...(resultPer.rows || [])
+        ];
+        
+        if (todasAsistencias.length === 0) {
             listEl.innerHTML = '<p>No hay asistencias registradas para este evento.</p>';
             return;
         }
         
-        // Agrupar por especialidad y año
+        // Agrupar por categoría y subcategoría
         const grouped = {};
-        result.rows.forEach(asistencia => {
-            const esp = asistencia.especialidad || 'Sin Especialidad';
-            const anio = asistencia.anio_formacion || 'Sin Año';
-            if (!grouped[esp]) grouped[esp] = {};
-            if (!grouped[esp][anio]) grouped[esp][anio] = [];
-            grouped[esp][anio].push(asistencia);
+        todasAsistencias.forEach(asistencia => {
+            const cat = asistencia.categoria || 'Sin Especialidad';
+            const sub = asistencia.tipo === 'personal' ? (asistencia.subcategoria || 'Sin Cargo') : (asistencia.subcategoria || 'Sin Año');
+            if (!grouped[cat]) grouped[cat] = {};
+            if (!grouped[cat][sub]) grouped[cat][sub] = [];
+            grouped[cat][sub].push(asistencia);
         });
         
         // Crear estructura de acordeón
-        let html = `<h3>Total de asistencias: ${result.rows.length}</h3>`;
+        let html = `<h3>Total de asistencias: ${todasAsistencias.length}</h3>`;
         
-        Object.keys(grouped).sort().forEach(especialidad => {
-            const totalEsp = Object.values(grouped[especialidad]).flat().length;
-            const espId = especialidad.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+        Object.keys(grouped).sort().forEach(categoria => {
+            const totalCat = Object.values(grouped[categoria]).flat().length;
+            const catId = categoria.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+            const esPersonal = Object.values(grouped[categoria]).flat()[0]?.tipo === 'personal';
+            const icono = esPersonal ? '👔' : '🎓';
             
             html += `
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)">
-                        <span>🎓 ${especialidad} (${totalEsp} asistencias)</span>
+                        <span>${icono} ${categoria} (${totalCat} asistencias)</span>
                         <span>▼</span>
                     </div>
                     <div class="accordion-content">
-                        <div id="anios-${espId}">`;
+                        <div id="anios-${catId}">`;
             
-            Object.keys(grouped[especialidad]).sort((a, b) => {
-                const orden = ['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'];
-                return orden.indexOf(a) - orden.indexOf(b);
-            }).forEach(anio => {
-                const asistencias = grouped[especialidad][anio];
+            const ordenAnios = ['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'];
+            Object.keys(grouped[categoria]).sort((a, b) => {
+                const ia = ordenAnios.indexOf(a);
+                const ib = ordenAnios.indexOf(b);
+                if (ia !== -1 && ib !== -1) return ia - ib;
+                return a.localeCompare(b);
+            }).forEach(sub => {
+                const asistencias = grouped[categoria][sub];
+                const subLabel = esPersonal ? sub : `Año ${sub}`;
                 
                 html += `
                     <div class="sub-accordion">
                         <div class="sub-accordion-header" onclick="toggleSubAccordion(this)">
-                            <span>📅 Año ${anio} (${asistencias.length} asistencias)</span>
+                            <span>📅 ${subLabel} (${asistencias.length} asistencias)</span>
                             <span>▼</span>
                         </div>
                         <div class="sub-accordion-content">`;

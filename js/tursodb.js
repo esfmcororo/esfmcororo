@@ -150,7 +150,7 @@ class TursoDB {
                 if (tableName === 'usuarios') {
                     // Para usuarios, usar AUTOINCREMENT
                     insertData = { ...data, created_at: new Date().toISOString() };
-                } else if (tableName === 'asistencias') {
+                } else if (tableName === 'asistencias' || tableName === 'asistencias_personal') {
                     const id = Date.now().toString();
                     insertData = { id, ...data, timestamp: new Date().toISOString() };
                 } else {
