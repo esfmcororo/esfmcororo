@@ -2631,163 +2631,110 @@ async function exportarAsistenciasExcel() {
     if (!currentEventoId) return;
     
     try {
-        // Obtener datos del evento
-        const evento = await tursodb.query(`SELECT * FROM eventos WHERE id = ?`, [currentEventoId]);
-        const eventoData = evento.rows[0];
-        
-        // Obtener todas las asistencias del evento
-        const asistenciasResult = await tursodb.query(`
-            SELECT 
-                a.timestamp,
-                e.codigo_unico,
-                e.dni,
-                e.nombre,
-                e.apellido_paterno,
-                e.apellido_materno,
-                e.especialidad,
-                e.anio_formacion
-            FROM asistencias a
-            JOIN estudiantes e ON a.estudiante_id = e.id
-            WHERE a.evento_id = ?
-            ORDER BY e.especialidad, e.anio_formacion, e.codigo_unico
-        `, [currentEventoId]);
-        
-        // Obtener TODOS los estudiantes de la BD
-        const todosEstudiantesResult = await tursodb.query(`
-            SELECT codigo_unico, dni, nombre, apellido_paterno, apellido_materno, especialidad, anio_formacion
-            FROM estudiantes 
-            ORDER BY especialidad, anio_formacion, codigo_unico
-        `);
-        
-        if (!todosEstudiantesResult.rows || todosEstudiantesResult.rows.length === 0) {
-            alert('No hay estudiantes en la base de datos.');
-            return;
-        }
-        
-        // Crear mapa de asistencias
-        const asistenciasMap = new Map();
-        if (asistenciasResult.rows) {
-            asistenciasResult.rows.forEach(asistencia => {
-                asistenciasMap.set(asistencia.codigo_unico, asistencia);
-            });
-        }
-        
-        // Calcular límites de tiempo del evento
+        const [eventoRes, asistEstRes, todosEstRes, asistPerRes, todosPersRes] = await Promise.all([
+            tursodb.query(`SELECT * FROM eventos WHERE id = ?`, [currentEventoId]),
+            tursodb.query(`
+                SELECT a.timestamp, e.codigo_unico, e.dni, e.nombre, e.apellido_paterno, e.apellido_materno, e.especialidad, e.anio_formacion
+                FROM asistencias a JOIN estudiantes e ON a.estudiante_id = e.id
+                WHERE a.evento_id = ? ORDER BY e.especialidad, e.anio_formacion, e.codigo_unico
+            `, [currentEventoId]),
+            tursodb.query(`SELECT codigo_unico, dni, nombre, apellido_paterno, apellido_materno, especialidad, anio_formacion FROM estudiantes ORDER BY especialidad, anio_formacion, codigo_unico`),
+            tursodb.query(`
+                SELECT a.timestamp, p.codigo_unico, p.dni, p.nombre, p.apellido_paterno, p.apellido_materno, p.personal, p.cargo
+                FROM asistencias_personal a JOIN administrativos p ON a.personal_id = p.id
+                WHERE a.evento_id = ? ORDER BY p.personal, p.codigo_unico
+            `, [currentEventoId]),
+            tursodb.query(`SELECT codigo_unico, dni, nombre, apellido_paterno, apellido_materno, personal, cargo FROM administrativos ORDER BY personal, codigo_unico`)
+        ]);
+
+        const eventoData = eventoRes.rows[0];
         const fechaFin = new Date(`${eventoData.fecha_fin}T${eventoData.hora_fin}`);
-        
-        // Agrupar estudiantes por especialidad
-        const estudiantesPorEspecialidad = {};
-        todosEstudiantesResult.rows.forEach(estudiante => {
-            const esp = estudiante.especialidad || 'Sin Especialidad';
-            if (!estudiantesPorEspecialidad[esp]) estudiantesPorEspecialidad[esp] = [];
-            
-            const asistencia = asistenciasMap.get(estudiante.codigo_unico);
-            let estado = 'FALTÓ';
-            
-            if (asistencia) {
-                const fechaAsistencia = new Date(asistencia.timestamp);
-                estado = fechaAsistencia <= fechaFin ? 'ASISTIÓ' : 'RETRASO';
-            }
-            
-            const nombreCompleto = formatearNombreCompleto(estudiante.nombre, estudiante.apellido_paterno, estudiante.apellido_materno);
-            
-            estudiantesPorEspecialidad[esp].push({
-                'Código': estudiante.codigo_unico,
-                'CI': formatearCampoOpcional(estudiante.dni, 'N/A'),
-                'Nombre Completo': nombreCompleto,
-                'Año': formatearCampoOpcional(estudiante.anio_formacion, 'N/A'),
-                'Estado': estado,
-                'Fecha/Hora Registro': asistencia ? new Date(asistencia.timestamp).toLocaleString('es-BO', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                }) : 'N/A'
-            });
-        });
-        
-        // Crear libro de Excel
         const wb = XLSX.utils.book_new();
-        
-        // Crear hoja por cada especialidad
-        Object.keys(estudiantesPorEspecialidad).sort().forEach(especialidad => {
-            const estudiantes = estudiantesPorEspecialidad[especialidad];
-            
-            // Ordenar por año y luego por código
-            estudiantes.sort((a, b) => {
-                const orden = ['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'];
-                const ordenA = orden.indexOf(a['Año']);
-                const ordenB = orden.indexOf(b['Año']);
-                if (ordenA !== ordenB) return ordenA - ordenB;
-                return a['Código'].localeCompare(b['Código']);
+
+        // ===== HOJAS DE ESTUDIANTES POR ESPECIALIDAD =====
+        if (todosEstRes.rows && todosEstRes.rows.length > 0) {
+            const asistEstMap = new Map();
+            (asistEstRes.rows || []).forEach(a => asistEstMap.set(a.codigo_unico, a));
+
+            const porEspecialidad = {};
+            todosEstRes.rows.forEach(est => {
+                const esp = est.especialidad || 'Sin Especialidad';
+                if (!porEspecialidad[esp]) porEspecialidad[esp] = [];
+                const asistencia = asistEstMap.get(est.codigo_unico);
+                const estado = asistencia ? (new Date(asistencia.timestamp) <= fechaFin ? 'ASISTIO' : 'RETRASO') : 'FALTO';
+                porEspecialidad[esp].push({
+                    cod: est.codigo_unico,
+                    ci: formatearCampoOpcional(est.dni, 'N/A'),
+                    nombre: formatearNombreCompleto(est.nombre, est.apellido_paterno, est.apellido_materno),
+                    anio: formatearCampoOpcional(est.anio_formacion, 'N/A'),
+                    estado,
+                    fecha: asistencia ? new Date(asistencia.timestamp).toLocaleString('es-BO', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false }) : 'N/A'
+                });
             });
-            
-            // Contar estados
-            const asistieron = estudiantes.filter(e => e.Estado === 'ASISTIÓ').length;
-            const faltaron = estudiantes.filter(e => e.Estado === 'FALTÓ').length;
-            const retrasos = estudiantes.filter(e => e.Estado === 'RETRASO').length;
-            
-            // Crear datos con título
-            const wsData = [
+
+            const ordenAnios = ['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'];
+            Object.keys(porEspecialidad).sort().forEach(especialidad => {
+                const filas = porEspecialidad[especialidad];
+                filas.sort((a, b) => {
+                    const ia = ordenAnios.indexOf(a.anio), ib = ordenAnios.indexOf(b.anio);
+                    if (ia !== ib) return ia - ib;
+                    return a.cod.localeCompare(b.cod);
+                });
+                const asistieron = filas.filter(f => f.estado === 'ASISTIO').length;
+                const faltaron = filas.filter(f => f.estado === 'FALTO').length;
+                const wsData = [
+                    [`REPORTE DE ASISTENCIAS - ${currentEventoNombre.toUpperCase()}`],
+                    [`ESPECIALIDAD: ${especialidad.toUpperCase()}`],
+                    [`Fecha: ${new Date().toLocaleDateString('es-BO')} | Total: ${filas.length} | Asistieron: ${asistieron} | Faltaron: ${faltaron}`],
+                    [],
+                    ['Codigo', 'CI', 'Nombre Completo', 'Anio', 'Estado', 'Fecha/Hora']
+                ];
+                filas.forEach(f => wsData.push([f.cod, f.ci, f.nombre, f.anio, f.estado, f.fecha]));
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                ws['!cols'] = [{ wch:12 }, { wch:12 }, { wch:28 }, { wch:10 }, { wch:10 }, { wch:18 }];
+                ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:5} }, { s:{r:1,c:0}, e:{r:1,c:5} }, { s:{r:2,c:0}, e:{r:2,c:5} }];
+                const nombreHoja = especialidad.replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 31) || 'Especialidad';
+                XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+            });
+        }
+
+        // ===== HOJA DE PERSONAL ADMINISTRATIVO =====
+        if (todosPersRes.rows && todosPersRes.rows.length > 0) {
+            const asistPerMap = new Map();
+            (asistPerRes.rows || []).forEach(a => asistPerMap.set(a.codigo_unico, a));
+
+            const filasPer = todosPersRes.rows.map(per => {
+                const asistencia = asistPerMap.get(per.codigo_unico);
+                return [
+                    per.codigo_unico,
+                    formatearCampoOpcional(per.dni, 'N/A'),
+                    formatearNombreCompleto(per.nombre, per.apellido_paterno, per.apellido_materno),
+                    per.personal || 'N/A',
+                    per.cargo || 'N/A',
+                    asistencia ? 'ASISTIO' : 'FALTO',
+                    asistencia ? new Date(asistencia.timestamp).toLocaleString('es-BO', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false }) : 'N/A'
+                ];
+            });
+
+            const asistieron = filasPer.filter(f => f[5] === 'ASISTIO').length;
+            const faltaron = filasPer.filter(f => f[5] === 'FALTO').length;
+            const wsPerData = [
                 [`REPORTE DE ASISTENCIAS - ${currentEventoNombre.toUpperCase()}`],
-                [`ESPECIALIDAD: ${especialidad.toUpperCase()}`],
-                [`Fecha: ${new Date().toLocaleDateString('es-BO')} | Total: ${estudiantes.length} | Asistieron: ${asistieron} | Faltaron: ${faltaron} | Retrasos: ${retrasos}`],
-                [], // Fila vacía
-                // Encabezados
-                ['Código', 'CI', 'Nombre Completo', 'Año', 'Estado', 'Fecha/Hora Registro']
+                [`PERSONAL ADMINISTRATIVO`],
+                [`Fecha: ${new Date().toLocaleDateString('es-BO')} | Total: ${filasPer.length} | Asistieron: ${asistieron} | Faltaron: ${faltaron}`],
+                [],
+                ['Codigo', 'CI', 'Nombre Completo', 'Tipo Personal', 'Cargo', 'Estado', 'Fecha/Hora']
             ];
-            
-            // Agregar datos de estudiantes
-            estudiantes.forEach(estudiante => {
-                wsData.push([
-                    estudiante['Código'],
-                    estudiante['CI'],
-                    estudiante['Nombre Completo'],
-                    estudiante['Año'],
-                    estudiante['Estado'],
-                    estudiante['Fecha/Hora Registro']
-                ]);
-            });
-            
-            // Crear hoja de trabajo
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
-            
-            // Ajustar ancho de columnas
-            const colWidths = [
-                { wch: 12 }, // Código
-                { wch: 12 }, // CI
-                { wch: 25 }, // Nombre Completo
-                { wch: 8 },  // Año
-                { wch: 10 }, // Estado
-                { wch: 20 }  // Fecha/Hora Registro
-            ];
-            ws['!cols'] = colWidths;
-            
-            // Fusionar celdas para el título
-            ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // Título
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, // Especialidad
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }  // Estadísticas
-            ];
-            
-            // Nombre de hoja (máximo 31 caracteres)
-            let nombreHoja = especialidad.replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 31);
-            if (nombreHoja.length === 0) nombreHoja = 'Especialidad';
-            
-            // Agregar hoja al libro
-            XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
-        });
-        
-        // Generar nombre de archivo
-        const nombreArchivo = `Asistencias_Completas_${currentEventoNombre.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-        
-        // Descargar archivo Excel
+            filasPer.forEach(f => wsPerData.push(f));
+            const wsPer = XLSX.utils.aoa_to_sheet(wsPerData);
+            wsPer['!cols'] = [{ wch:12 }, { wch:12 }, { wch:28 }, { wch:18 }, { wch:30 }, { wch:10 }, { wch:18 }];
+            wsPer['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:6} }, { s:{r:1,c:0}, e:{r:1,c:6} }, { s:{r:2,c:0}, e:{r:2,c:6} }];
+            XLSX.utils.book_append_sheet(wb, wsPer, 'Personal');
+        }
+
+        const nombreArchivo = `Asistencias_${currentEventoNombre.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, nombreArchivo);
-        
-        alert('Archivo Excel exportado correctamente con todas las especialidades.');
+        alert('Archivo Excel exportado correctamente.');
         
     } catch (error) {
         console.error('Error exportando:', error);
