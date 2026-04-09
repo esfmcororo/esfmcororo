@@ -2515,89 +2515,92 @@ async function verListaAsistencias(eventoId, eventoNombre) {
             return;
         }
         
-        // Agrupar por categoría y subcategoría
-        const grouped = {};
-        todasAsistencias.forEach(asistencia => {
-            const cat = asistencia.categoria || 'Sin Especialidad';
-            const sub = asistencia.tipo === 'personal' ? (asistencia.subcategoria || 'Sin Cargo') : (asistencia.subcategoria || 'Sin Año');
-            if (!grouped[cat]) grouped[cat] = {};
-            if (!grouped[cat][sub]) grouped[cat][sub] = [];
-            grouped[cat][sub].push(asistencia);
-        });
-        
-        // Crear estructura de acordeón
+        // Separar estudiantes y personal
+        const estudiantes = todasAsistencias.filter(a => a.tipo === 'estudiante');
+        const personal = todasAsistencias.filter(a => a.tipo === 'personal');
+
         let html = `<h3>Total de asistencias: ${todasAsistencias.length}</h3>`;
-        
-        Object.keys(grouped).sort().forEach(categoria => {
-            const totalCat = Object.values(grouped[categoria]).flat().length;
-            const catId = categoria.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
-            const esPersonal = Object.values(grouped[categoria]).flat()[0]?.tipo === 'personal';
-            const icono = esPersonal ? '👔' : '🎓';
-            
+
+        // ===== ESTUDIANTES: especialidad > año =====
+        const ordenAnios = ['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'];
+        const groupedEst = {};
+        estudiantes.forEach(a => {
+            const esp = a.categoria || 'Sin Especialidad';
+            const anio = a.subcategoria || 'Sin Año';
+            if (!groupedEst[esp]) groupedEst[esp] = {};
+            if (!groupedEst[esp][anio]) groupedEst[esp][anio] = [];
+            groupedEst[esp][anio].push(a);
+        });
+
+        Object.keys(groupedEst).sort().forEach(especialidad => {
+            const totalEsp = Object.values(groupedEst[especialidad]).flat().length;
+            const espId = especialidad.replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
             html += `
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)">
-                        <span>${icono} ${categoria} (${totalCat} asistencias)</span>
+                        <span>🎓 ${especialidad} (${totalEsp} asistencias)</span>
                         <span>▼</span>
                     </div>
-                    <div class="accordion-content">
-                        <div id="anios-${catId}">`;
-            
-            const ordenAnios = ['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'];
-            Object.keys(grouped[categoria]).sort((a, b) => {
-                const ia = ordenAnios.indexOf(a);
-                const ib = ordenAnios.indexOf(b);
+                    <div class="accordion-content"><div id="anios-${espId}">`;
+
+            Object.keys(groupedEst[especialidad]).sort((a, b) => {
+                const ia = ordenAnios.indexOf(a), ib = ordenAnios.indexOf(b);
                 if (ia !== -1 && ib !== -1) return ia - ib;
                 return a.localeCompare(b);
-            }).forEach(sub => {
-                const asistencias = grouped[categoria][sub];
-                const subLabel = esPersonal ? sub : `Año ${sub}`;
-                
+            }).forEach(anio => {
+                const lista = groupedEst[especialidad][anio];
                 html += `
                     <div class="sub-accordion">
                         <div class="sub-accordion-header" onclick="toggleSubAccordion(this)">
-                            <span>📅 ${subLabel} (${asistencias.length} asistencias)</span>
+                            <span>📅 Año ${anio} (${lista.length} asistencias)</span>
                             <span>▼</span>
                         </div>
                         <div class="sub-accordion-content">`;
-                
-                asistencias.forEach(asistencia => {
-                    const fecha = new Date(asistencia.timestamp).toLocaleString('es-BO', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                    });
-                    const nombreCompleto = formatearNombreCompleto(asistencia.nombre, asistencia.apellido_paterno, asistencia.apellido_materno);
-                    
-                    html += `
-                        <div class="estudiante-item">
-                            <div>
-                                <strong>${nombreCompleto}</strong><br>
-                                <small>📋 ${asistencia.codigo_unico} | 🆔 ${formatearCampoOpcional(asistencia.dni, 'Sin DNI')} | 🕒 ${fecha}</small>
-                            </div>
-                        </div>`;
+                lista.forEach(a => {
+                    const fecha = new Date(a.timestamp).toLocaleString('es-BO', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false });
+                    html += `<div class="estudiante-item"><div>
+                        <strong>${formatearNombreCompleto(a.nombre, a.apellido_paterno, a.apellido_materno)}</strong><br>
+                        <small>📋 ${a.codigo_unico} | 🆔 ${formatearCampoOpcional(a.dni, 'Sin DNI')} | 🕒 ${fecha}</small>
+                    </div></div>`;
                 });
-                
-                html += `
-                        </div>
-                    </div>`;
+                html += `</div></div>`;
             });
-            
-            html += `
-                        </div>
-                    </div>
-                </div>`;
+            html += `</div></div></div>`;
         });
-        
+
+        // ===== PERSONAL: lista directa por tipo sin sub-nivel =====
+        const ordenPersonal = ['DIRECTIVO', 'ADMINISTRATIVO', 'DE SERVICIO', 'DOCENTE'];
+        const groupedPer = {};
+        personal.forEach(a => {
+            const tipo = a.categoria || 'Sin Tipo';
+            if (!groupedPer[tipo]) groupedPer[tipo] = [];
+            groupedPer[tipo].push(a);
+        });
+
+        Object.keys(groupedPer).sort((a, b) => {
+            const ia = ordenPersonal.indexOf(a), ib = ordenPersonal.indexOf(b);
+            if (ia !== -1 && ib !== -1) return ia - ib;
+            return a.localeCompare(b);
+        }).forEach(tipo => {
+            const lista = groupedPer[tipo];
+            html += `
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span>👔 ${tipo} (${lista.length} asistencias)</span>
+                        <span>▼</span>
+                    </div>
+                    <div class="accordion-content">`;
+            lista.forEach(a => {
+                const fecha = new Date(a.timestamp).toLocaleString('es-BO', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false });
+                html += `<div class="estudiante-item"><div>
+                    <strong>${formatearNombreCompleto(a.nombre, a.apellido_paterno, a.apellido_materno)}</strong><br>
+                    <small>📋 ${a.codigo_unico} | 🆔 ${formatearCampoOpcional(a.dni, 'Sin DNI')} | 🕒 ${fecha}</small>
+                </div></div>`;
+            });
+            html += `</div></div>`;
+        });
+
         listEl.innerHTML = html;
-        
-    } catch (error) {
-        console.error('Error cargando asistencias:', error);
-        listEl.innerHTML = '<p>Error cargando las asistencias.</p>';
-    }
 }
 
 // Función para limpiar duplicados de un evento específico
