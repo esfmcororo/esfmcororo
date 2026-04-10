@@ -469,6 +469,19 @@ function showLogin() {
 
 function showDashboard() {
     hideAllSections();
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    const rol = user ? user.rol : '';
+
+    if (rol === 'usuario') {
+        showAsistenciaModule();
+        return;
+    }
+    if (rol === 'docente') {
+        window.location.href = 'docentes/index.html';
+        return;
+    }
+
+    // admin: mostrar dashboard completo
     document.getElementById('dashboard-section').classList.add('active');
     updateAllUserDropdowns();
 }
@@ -510,6 +523,10 @@ function showAsistenciaModule() {
 }
 
 function showBibliotecaModule() {
+    if (!isAdmin()) {
+        alert('Solo administradores pueden acceder a Biblioteca');
+        return;
+    }
     window.location.href = 'biblioteca/index.html';
 }
 
