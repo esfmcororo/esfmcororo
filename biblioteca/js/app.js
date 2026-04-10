@@ -193,6 +193,19 @@ async function buscarYRegistrar() {
     const anio = tipo === 'estudiante' ? persona.anio_formacion : null;
     const cargo = tipo === 'personal' ? persona.cargo : null;
 
+    // Verificar si ya se registró en el último minuto
+    const haceUnMinuto = new Date(Date.now() - 60000).toISOString();
+    const reciente = await tursodb.query(
+        `SELECT id FROM biblioteca_visitas WHERE evento_id = ? AND persona_ci = ? AND timestamp > ? LIMIT 1`,
+        [eventoActivoBib.id, ci, haceUnMinuto]
+    );
+    if (reciente.rows && reciente.rows.length > 0) {
+        mostrarResultado(nombre, '⏱️ Ya registrado\nEspera 1 minuto para volver a registrar', 'warning');
+        resultEl.innerHTML = '';
+        document.getElementById('ci-input').value = '';
+        return;
+    }
+
     await tursodb.query(
         `INSERT INTO biblioteca_visitas (id, evento_id, persona_ci, persona_nombre, persona_tipo, persona_especialidad, persona_anio, persona_cargo, timestamp)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
