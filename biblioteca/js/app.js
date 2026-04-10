@@ -576,13 +576,21 @@ async function onQrScanBib(qrData) {
     if (isScanningBib) return;
     isScanningBib = true;
 
-    // Extraer código único (último campo después de |)
+    // Pausar cámara durante el procesamiento para evitar callbacks acumulados
+    if (html5QrCodeBib && html5QrCodeBib.isScanning) {
+        await html5QrCodeBib.pause();
+    }
+
     const partes = qrData.split('|');
     const codigoUnico = partes[partes.length - 1].trim();
-
-    // Poner el código en el input y registrar
     document.getElementById('ci-input').value = codigoUnico;
     await buscarYRegistrar();
 
-    setTimeout(() => { isScanningBib = false; }, 2000);
+    // Reanudar cámara después de 2 segundos
+    setTimeout(async () => {
+        if (html5QrCodeBib && html5QrCodeBib.isScanning === false) {
+            try { await html5QrCodeBib.resume(); } catch(e) {}
+        }
+        isScanningBib = false;
+    }, 2000);
 }
