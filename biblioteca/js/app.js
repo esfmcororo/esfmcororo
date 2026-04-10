@@ -149,10 +149,13 @@ async function obtenerEventoActivo() {
 }
 
 async function buscarYRegistrar() {
-    if (!eventoActivoBib) { alert('No hay evento activo. Crea uno primero.'); return; }
+    if (!eventoActivoBib) {
+        mostrarResultado('Sin evento activo', '⚠️ No hay evento activo. Crea uno primero.', 'warning');
+        return;
+    }
 
     const ci = document.getElementById('ci-input').value.trim();
-    if (!ci) { alert('Ingresa un CI o código único'); return; }
+    if (!ci) return;
 
     const resultEl = document.getElementById('registro-resultado');
     resultEl.innerHTML = '<p style="color:#666;">Buscando...</p>';
@@ -180,7 +183,8 @@ async function buscarYRegistrar() {
     }
 
     if (!persona) {
-        resultEl.innerHTML = `<div style="padding:12px; background:#f8d7da; border-radius:8px; color:#721c24;">❌ No se encontró ninguna persona con CI/código: <strong>${ci}</strong></div>`;
+        mostrarResultado('No encontrado', `❌ No se encontró ninguna persona con CI/código: ${ci}`, 'error');
+        resultEl.innerHTML = `<div style="padding:12px; background:#f8d7da; border-radius:8px; color:#721c24;">❌ No se encontró: <strong>${ci}</strong></div>`;
         return;
     }
 
@@ -189,7 +193,6 @@ async function buscarYRegistrar() {
     const anio = tipo === 'estudiante' ? persona.anio_formacion : null;
     const cargo = tipo === 'personal' ? persona.cargo : null;
 
-    // Registrar visita (permite múltiples por día)
     await tursodb.query(
         `INSERT INTO biblioteca_visitas (id, evento_id, persona_ci, persona_nombre, persona_tipo, persona_especialidad, persona_anio, persona_cargo, timestamp)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -199,6 +202,8 @@ async function buscarYRegistrar() {
     const infoExtra = tipo === 'estudiante'
         ? `🎓 ${especialidad} | 📅 Año ${anio}`
         : `👔 ${especialidad} | 💼 ${cargo}`;
+
+    mostrarResultado(nombre, `✅ VISITA REGISTRADA\n${infoExtra}`, 'success');
 
     resultEl.innerHTML = `
         <div style="padding:15px; background:#d4edda; border-radius:8px; color:#155724;">
@@ -210,6 +215,23 @@ async function buscarYRegistrar() {
     document.getElementById('ci-input').value = '';
     document.getElementById('ci-input').focus();
     await cargarVisitasHoy();
+}
+
+function mostrarResultado(nombre, mensaje, tipo) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    const bgColor = tipo === 'success' ? '#28a745' : tipo === 'warning' ? '#ffc107' : '#dc3545';
+    const textColor = tipo === 'warning' ? '#000' : '#fff';
+    const icono = tipo === 'success' ? '✅' : tipo === 'warning' ? '⚠️' : '❌';
+    overlay.innerHTML = `
+        <div style="background:${bgColor};color:${textColor};padding:40px;border-radius:20px;text-align:center;max-width:90%;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div style="font-size:4rem;margin-bottom:15px;">${icono}</div>
+            <h2 style="font-size:1.8rem;margin-bottom:10px;">${nombre}</h2>
+            <p style="font-size:1.2rem;white-space:pre-line;">${mensaje}</p>
+        </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => { if (document.body.contains(overlay)) document.body.removeChild(overlay); }, 2500);
+    overlay.addEventListener('click', () => { if (document.body.contains(overlay)) document.body.removeChild(overlay); });
 }
 
 async function cargarVisitasHoy() {
