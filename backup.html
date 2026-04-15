@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESFM - Backup BD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #333; margin-bottom: 8px; font-size: 1.5rem; }
+        p.sub { color: #666; font-size: 14px; margin-bottom: 30px; }
+        .card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card h3 { margin-bottom: 8px; color: #333; }
+        .card p { color: #666; font-size: 13px; margin-bottom: 15px; }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-blue { background: #007bff; color: white; }
+        .btn-green { background: #28a745; color: white; }
+        .btn-red { background: #dc3545; color: white; }
+        .btn-gray { background: #6c757d; color: white; }
+        #log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 20px;
+            display: none;
+        }
+        .log-line { padding: 2px 0; }
+        .log-ok { color: #28a745; }
+        .log-err { color: #dc3545; }
+        .log-info { color: #007bff; }
+        .log-warn { color: #fd7e14; }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+        .volver { display: block; text-align: center; margin-top: 20px; color: #007bff; cursor: pointer; font-size: 14px; }
+        .progress { 
+            background: #e9ecef; 
+            border-radius: 8px; 
+            height: 8px; 
+            margin-top: 10px;
+            display: none;
+        }
+        .progress-bar { 
+            background: #007bff; 
+            height: 100%; 
+            border-radius: 8px; 
+            transition: width 0.3s;
+            width: 0%;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🗄️ Backup y Restauración</h1>
+    <p class="sub">ESFM "Simón Bolívar" Cororo — Base de datos Turso</p>
+
+    <!-- BACKUP -->
+    <div class="card">
+        <h3>📥 Crear Copia de Seguridad</h3>
+        <p>Descarga todos los datos actuales de la BD en un archivo JSON. Guárdalo en un lugar seguro.</p>
+        <button class="btn btn-blue" onclick="hacerBackup()">📥 Descargar Backup</button>
+        <div class="progress" id="progress-backup"><div class="progress-bar" id="bar-backup"></div></div>
+    </div>
+
+    <!-- RESTAURAR -->
+    <div class="card">
+        <h3>📤 Restaurar desde Backup</h3>
+        <p>⚠️ Esto <strong>reemplazará</strong> los datos actuales con los del archivo de backup. Asegúrate de tener una copia antes de continuar.</p>
+        <input type="file" id="backup-file" accept=".json">
+        <button class="btn btn-red" onclick="confirmarRestaurar()">📤 Restaurar Backup</button>
+        <div class="progress" id="progress-restore"><div class="progress-bar" id="bar-restore"></div></div>
+    </div>
+
+    <!-- LOG -->
+    <div id="log"></div>
+
+    <span class="volver" onclick="volver()">← Volver al sistema</span>
+</div>
+
+<script src="js/tursodb.js"></script>
+<script>
+const TABLAS = [
+    'usuarios',
+    'estudiantes', 
+    'administrativos',
+    'eventos',
+    'asistencias',
+    'asistencias_personal',
+    'biblioteca_eventos',
+    'biblioteca_visitas'
+];
+
+function log(msg, tipo = 'info') {
+    const logEl = document.getElementById('log');
+    logEl.style.display = 'block';
+    const line = document.createElement('div');
+    line.className = `log-line log-${tipo}`;
+    line.textContent = msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setProgress(barId, progressId, pct) {
+    document.getElementById(progressId).style.display = 'block';
+    document.getElementById(barId).style.width = pct + '%';
+}
+
+async function hacerBackup() {
+    document.getElementById('log').innerHTML = '';
+    log('🔄 Iniciando backup...', 'info');
+    const backup = { fecha: new Date().toISOString(), version: '1.0', tablas: {} };
+
+    for (let i = 0; i < TABLAS.length; i++) {
+        const tabla = TABLAS[i];
+        try {
+            const r = await tursodb.query(`SELECT * FROM ${tabla}`);
+            backup.tablas[tabla] = r.rows || [];
+            log(`✅ ${tabla}: ${backup.tablas[tabla].length} registros`, 'ok');
+        } catch(e) {
+            backup.tablas[tabla] = [];
+            log(`⚠️ ${tabla}: tabla no encontrada (se omite)`, 'warn');
+        }
+        setProgress('bar-backup', 'progress-backup', Math.round(((i+1)/TABLAS.length)*100));
+    }
+
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `backup_esfm_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+
+    const total = Object.values(backup.tablas).reduce((s, t) => s + t.length, 0);
+    log(`✅ Backup completado — ${total} registros totales`, 'ok');
+    log(`📁 Archivo: backup_esfm_${new Date().toISOString().split('T')[0]}.json`, 'info');
+}
+
+async function confirmarRestaurar() {
+    const file = document.getElementById('backup-file').files[0];
+    if (!file) { alert('Selecciona un archivo de backup primero'); return; }
+
+    const confirmacion = confirm(
+        '⚠️ ADVERTENCIA\n\n' +
+        'Esto eliminará TODOS los datos actuales y los reemplazará con los del backup.\n\n' +
+        '¿Estás seguro de continuar?'
+    );
+    if (!confirmacion) return;
+
+    const password = prompt('Ingresa la contraseña de administrador para continuar:');
+    if (password !== 'Admin123!') { alert('❌ Contraseña incorrecta'); return; }
+
+    await restaurarBackup(file);
+}
+
+async function restaurarBackup(file) {
+    document.getElementById('log').innerHTML = '';
+    log('🔄 Leyendo archivo de backup...', 'info');
+
+    try {
+        const text = await file.text();
+        const backup = JSON.parse(text);
+
+        if (!backup.tablas) { log('❌ Archivo de backup inválido', 'err'); return; }
+
+        log(`📅 Backup del: ${new Date(backup.fecha).toLocaleString('es-BO')}`, 'info');
+        log('🗑️ Limpiando datos actuales...', 'warn');
+
+        // Eliminar en orden para respetar dependencias
+        const ordenEliminar = [
+            'biblioteca_visitas', 'biblioteca_eventos',
+            'asistencias_personal', 'asistencias',
+            'eventos', 'administrativos', 'estudiantes', 'usuarios'
+        ];
+
+        for (const tabla of ordenEliminar) {
+            try {
+                await tursodb.query(`DELETE FROM ${tabla}`);
+                log(`🗑️ ${tabla} limpiada`, 'warn');
+            } catch(e) {
+                log(`⚠️ No se pudo limpiar ${tabla}`, 'warn');
+            }
+        }
+
+        log('📤 Restaurando datos...', 'info');
+        let totalRestaurados = 0;
+        const tablasBackup = Object.keys(backup.tablas);
+
+        for (let i = 0; i < tablasBackup.length; i++) {
+            const tabla = tablasBackup[i];
+            const filas = backup.tablas[tabla];
+            if (!filas || filas.length === 0) {
+                log(`⏭️ ${tabla}: vacía, omitida`, 'info');
+                continue;
+            }
+
+            let exitosos = 0;
+            for (const fila of filas) {
+                try {
+                    const campos = Object.keys(fila);
+                    const valores = Object.values(fila);
+                    const placeholders = campos.map(() => '?').join(', ');
+                    await tursodb.query(
+                        `INSERT OR REPLACE INTO ${tabla} (${campos.join(', ')}) VALUES (${placeholders})`,
+                        valores
+                    );
+                    exitosos++;
+                } catch(e) {
+                    log(`❌ Error en ${tabla}: ${e.message}`, 'err');
+                }
+            }
+            totalRestaurados += exitosos;
+            log(`✅ ${tabla}: ${exitosos}/${filas.length} registros restaurados`, 'ok');
+            setProgress('bar-restore', 'progress-restore', Math.round(((i+1)/tablasBackup.length)*100));
+        }
+
+        log(`✅ Restauración completada — ${totalRestaurados} registros`, 'ok');
+        log('🔄 Recarga la página principal para ver los cambios', 'info');
+
+    } catch(e) {
+        log(`❌ Error: ${e.message}`, 'err');
+    }
+}
+
+function volver() {
+    window.location.href = 'index.html';
+}
+
+// Verificar acceso admin
+window.addEventListener('DOMContentLoaded', async () => {
+    await tursodb.initializeData();
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user || user.rol !== 'admin') {
+        alert('Solo administradores pueden acceder a esta página');
+        window.location.href = 'index.html';
+    }
+});
+</script>
+</body>
+</html>
